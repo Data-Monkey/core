@@ -537,10 +537,9 @@ class GTFSDepartureSensor(SensorEntity):
         self._offset = offset
         self._custom_name = name
 
-        self._available = False
-        self._icon = ICON
-        self._name = ""
-        self._state: str | None = None
+        self._attr_available = False
+        self._attr_icon = ICON
+        self._attr_name = ""
         self._attributes = {}
 
         self._agency = None
@@ -553,31 +552,6 @@ class GTFSDepartureSensor(SensorEntity):
         self.lock = threading.Lock()
         self.update()
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self) -> str | None:  # type: ignore
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._available
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """Return the state attributes."""
-        return self._attributes
-
-    @property
-    def icon(self) -> str:
-        """Icon to use in the frontend, if any."""
-        return self._icon
-
     def update(self) -> None:
         """Get the latest data from GTFS and update the states."""
         with self.lock:
@@ -585,7 +559,7 @@ class GTFSDepartureSensor(SensorEntity):
             if not self._origin:
                 stops = self._pygtfs.stops_by_id(self.origin)
                 if not stops:
-                    self._available = False
+                    self._attr_available = False
                     _LOGGER.warning("Origin stop ID %s not found", self.origin)
                     return
                 self._origin = stops[0]
@@ -593,14 +567,14 @@ class GTFSDepartureSensor(SensorEntity):
             if not self._destination:
                 stops = self._pygtfs.stops_by_id(self.destination)
                 if not stops:
-                    self._available = False
+                    self._attr_available = False
                     _LOGGER.warning(
                         "Destination stop ID %s not found", self.destination
                     )
                     return
                 self._destination = stops[0]
 
-            self._available = True
+            self._attr_available = True
 
             # Fetch next departure
             self._departure = get_next_departure(
@@ -613,9 +587,9 @@ class GTFSDepartureSensor(SensorEntity):
 
             # Define the state as a UTC timestamp with ISO 8601 format
             if not self._departure:
-                self._state = None
+                self._attr_state = None
             else:
-                self._state = dt_util.as_utc(
+                self._attr_state = dt_util.as_utc(
                     self._departure["departure_time"]
                 ).isoformat()
 
@@ -651,9 +625,9 @@ class GTFSDepartureSensor(SensorEntity):
             self.update_attributes()
 
             if self._route:
-                self._icon = ICONS.get(self._route.route_type, ICON)
+                self._attr_icon = ICONS.get(self._route.route_type, ICON)
             else:
-                self._icon = ICON
+                self._attr_icon = ICON
 
             name = (
                 f"{getattr(self._agency, 'agency_name', DEFAULT_NAME)} "
@@ -661,7 +635,7 @@ class GTFSDepartureSensor(SensorEntity):
             )
             if not self._departure:
                 name = f"{DEFAULT_NAME}"
-            self._name = self._custom_name or name
+            self._attr_name = self._custom_name or name
 
     def update_attributes(self) -> None:
         """Update state attributes."""
@@ -695,7 +669,7 @@ class GTFSDepartureSensor(SensorEntity):
         # Add contextual information
         self._attributes[ATTR_OFFSET] = self._offset.total_seconds() / 60
 
-        if self._state is None:
+        if self.state is None:
             self._attributes[ATTR_INFO] = (
                 "No more departures"
                 if self._include_tomorrow
@@ -798,6 +772,8 @@ class GTFSDepartureSensor(SensorEntity):
             )
         else:
             self.remove_keys(prefix)
+
+        self._attr_extra_state_attributes = self._attributes
 
     @staticmethod
     def dict_for_table(resource: Any) -> dict:
