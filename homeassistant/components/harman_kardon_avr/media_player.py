@@ -48,61 +48,27 @@ def setup_platform(hass, config, add_entities, discover_info=None):
 class HkAvrDevice(MediaPlayerEntity):
     """Representation of a Harman Kardon AVR / JBL AVR TV."""
 
+    _attr_supported_features = SUPPORT_HARMAN_KARDON_AVR
+
     def __init__(self, avr):
         """Initialize a new HarmanKardonAVR."""
         self._avr = avr
-
-        self._name = avr.name
-        self._host = avr.host
-        self._port = avr.port
-
-        self._source_list = avr.sources
-
-        self._state = None
-        self._muted = avr.muted
-        self._current_source = avr.current_source
+        self._attr_name = avr.name
+        self._attr_source_list = avr.sources
+        self._attr_is_volume_muted = avr.muted
+        self._attr_source = avr.current_source
 
     def update(self):
         """Update the state of this media_player."""
         if self._avr.is_on():
-            self._state = STATE_ON
+            self._attr_state = STATE_ON
         elif self._avr.is_off():
-            self._state = STATE_OFF
+            self._attr_state = STATE_OFF
         else:
-            self._state = None
+            self._attr_state = None
 
-        self._muted = self._avr.muted
-        self._current_source = self._avr.current_source
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def is_volume_muted(self):
-        """Muted status not available."""
-        return self._muted
-
-    @property
-    def source(self):
-        """Return the current input source."""
-        return self._current_source
-
-    @property
-    def source_list(self):
-        """Available sources."""
-        return self._source_list
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        return SUPPORT_HARMAN_KARDON_AVR
+        self._attr_is_volume_muted = self._avr.muted
+        self._attr_source = self._avr.current_source
 
     def turn_on(self):
         """Turn the AVR on."""
