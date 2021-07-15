@@ -93,7 +93,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities(
         [
             HistoryStatsSensor(
-                hass, entity_id, entity_states, start, end, duration, sensor_type, name
+                entity_id, entity_states, start, end, duration, sensor_type, name
             )
         ]
     )
@@ -104,8 +104,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class HistoryStatsSensor(SensorEntity):
     """Representation of a HistoryStats sensor."""
 
+    _attr_icon = ICON
+
     def __init__(
-        self, hass, entity_id, entity_states, start, end, duration, sensor_type, name
+        self, entity_id, entity_states, start, end, duration, sensor_type, name
     ):
         """Initialize the HistoryStats sensor."""
         self._entity_id = entity_id
@@ -114,8 +116,8 @@ class HistoryStatsSensor(SensorEntity):
         self._start = start
         self._end = end
         self._type = sensor_type
-        self._name = name
-        self._unit_of_measurement = UNITS[sensor_type]
+        self._attr_name = name
+        self._attr_unit_of_measurement = UNITS[sensor_type]
 
         self._period = (datetime.datetime.now(), datetime.datetime.now())
         self.value = None
@@ -146,45 +148,6 @@ class HistoryStatsSensor(SensorEntity):
 
         # Delay first refresh to keep startup fast
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, start_refresh)
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        if self.value is None or self.count is None:
-            return None
-
-        if self._type == CONF_TYPE_TIME:
-            return round(self.value, 2)
-
-        if self._type == CONF_TYPE_RATIO:
-            return HistoryStatsHelper.pretty_ratio(self.value, self._period)
-
-        if self._type == CONF_TYPE_COUNT:
-            return self.count
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._unit_of_measurement
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        if self.value is None:
-            return {}
-
-        hsh = HistoryStatsHelper
-        return {ATTR_VALUE: hsh.pretty_duration(self.value)}
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return ICON
 
     async def async_update(self):
         """Get the latest data and updates the states."""
@@ -221,6 +184,23 @@ class HistoryStatsSensor(SensorEntity):
         await self.hass.async_add_executor_job(
             self._update, start, end, now_timestamp, start_timestamp, end_timestamp
         )
+
+        if self.value is None or self.count is None:
+            self._attr_state = None
+        elif self._type == CONF_TYPE_TIME:
+            self._attr_state = round(self.value, 2)
+        elif self._type == CONF_TYPE_RATIO:
+            self._attr_state = HistoryStatsHelper.pretty_ratio(self.value, self._period)
+        elif self._type == CONF_TYPE_COUNT:
+            self._attr_state = self.count
+
+        if self.value is None:
+            self._attr_extra_state_attributes = {}
+        else:
+            hsh = HistoryStatsHelper
+            self._attr_extra_state_attributes = {
+                ATTR_VALUE: hsh.pretty_duration(self.value)
+            }
 
     def _update(self, start, end, now_timestamp, start_timestamp, end_timestamp):
         # Get history between start and end
