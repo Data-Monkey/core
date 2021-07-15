@@ -56,44 +56,31 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HaveIBeenPwnedSensor(SensorEntity):
     """Implementation of a HaveIBeenPwned sensor."""
 
+    _attr_unit_of_measurement = "Breaches"
+
     def __init__(self, data, email):
         """Initialize the HaveIBeenPwned sensor."""
-        self._state = None
         self._data = data
         self._email = email
-        self._unit_of_measurement = "Breaches"
+        self._attr_name = f"Breaches {email}"
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"Breaches {self._email}"
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._unit_of_measurement
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the attributes of the sensor."""
+    def update_attributes(self):
+        """Update the attributes of the sensor."""
         val = {ATTR_ATTRIBUTION: ATTRIBUTION}
         if self._email not in self._data.data:
-            return val
+            self._attr_extra_state_attributes = val
+        else:
+            for idx, value in enumerate(self._data.data[self._email]):
+                tmpname = f"breach {idx + 1}"
+                datetime_local = dt_util.as_local(
+                    dt_util.parse_datetime(value["AddedDate"])
+                )
+                tmpvalue = (
+                    f"{value['Title']} {datetime_local.strftime(DATE_STR_FORMAT)}"
+                )
+                val[tmpname] = tmpvalue
 
-        for idx, value in enumerate(self._data.data[self._email]):
-            tmpname = f"breach {idx + 1}"
-            datetime_local = dt_util.as_local(
-                dt_util.parse_datetime(value["AddedDate"])
-            )
-            tmpvalue = f"{value['Title']} {datetime_local.strftime(DATE_STR_FORMAT)}"
-            val[tmpname] = tmpvalue
-
-        return val
+            self._attr_extra_state_attributes = val
 
     async def async_added_to_hass(self):
         """Get initial data."""
@@ -104,6 +91,7 @@ class HaveIBeenPwnedSensor(SensorEntity):
     def update_nothrottle(self, dummy=None):
         """Update sensor without throttle."""
         self._data.update_no_throttle()
+        self.update_attributes()
 
         # Schedule a forced update 5 seconds in the future if the update above
         # returned no data for this sensors email. This is mainly to make sure
@@ -118,15 +106,16 @@ class HaveIBeenPwnedSensor(SensorEntity):
             )
             return
 
-        self._state = len(self._data.data[self._email])
+        self._attr_state = len(self._data.data[self._email])
         self.schedule_update_ha_state()
 
     def update(self):
         """Update data and see if it contains data for our email."""
         self._data.update()
+        self.update_attributes()
 
         if self._email in self._data.data:
-            self._state = len(self._data.data[self._email])
+            self._attr_state = len(self._data.data[self._email])
 
 
 class HaveIBeenPwnedData:
