@@ -120,7 +120,7 @@ class HiveEntity(Entity):
         self.hive = hive
         self.device = hive_device
         self.attributes = {}
-        self._unique_id = f'{self.device["hiveID"]}-{self.device["hiveType"]}'
+        self._attr_unique_id = f'{hive_device["hiveID"]}-{hive_device["hiveType"]}'
 
     async def async_added_to_hass(self):
         """When entity is added to Home Assistant."""

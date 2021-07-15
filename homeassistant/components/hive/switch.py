@@ -25,50 +25,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HiveDevicePlug(HiveEntity, SwitchEntity):
     """Hive Active Plug."""
 
-    @property
-    def unique_id(self):
-        """Return unique ID of entity."""
-        return self._unique_id
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        if self.device["hiveType"] == "activeplug":
-            return {
-                "identifiers": {(DOMAIN, self.device["device_id"])},
-                "name": self.device["device_name"],
-                "model": self.device["deviceData"]["model"],
-                "manufacturer": self.device["deviceData"]["manufacturer"],
-                "sw_version": self.device["deviceData"]["version"],
-                "via_device": (DOMAIN, self.device["parentDevice"]),
+    def __init__(self, hive, hive_device):
+        """Initialize a Hive Active Plug."""
+        super().__init__(hive, hive_device)
+        self._attr_name = hive_device["haName"]
+        if hive_device["hiveType"] == "activeplug":
+            self._attr_device_info = {
+                "identifiers": {(DOMAIN, hive_device["device_id"])},
+                "name": hive_device["device_name"],
+                "model": hive_device["deviceData"]["model"],
+                "manufacturer": hive_device["deviceData"]["manufacturer"],
+                "sw_version": hive_device["deviceData"]["version"],
+                "via_device": (DOMAIN, hive_device["parentDevice"]),
             }
-
-    @property
-    def name(self):
-        """Return the name of this Switch device if any."""
-        return self.device["haName"]
-
-    @property
-    def available(self):
-        """Return if the device is available."""
-        return self.device["deviceData"].get("online")
-
-    @property
-    def extra_state_attributes(self):
-        """Show Device Attributes."""
-        return {
-            ATTR_MODE: self.attributes.get(ATTR_MODE),
-        }
-
-    @property
-    def current_power_w(self):
-        """Return the current power usage in W."""
-        return self.device["status"].get("power_usage")
-
-    @property
-    def is_on(self):
-        """Return true if switch is on."""
-        return self.device["status"]["state"]
 
     @refresh_system
     async def async_turn_on(self, **kwargs):
@@ -85,3 +54,9 @@ class HiveDevicePlug(HiveEntity, SwitchEntity):
         await self.hive.session.updateData(self.device)
         self.device = await self.hive.switch.getSwitch(self.device)
         self.attributes.update(self.device.get("attributes", {}))
+        self._attr_available = self.device["deviceData"].get("online")
+        self._attr_is_on = self.device["status"]["state"]
+        self._attr_extra_state_attributes = {
+            ATTR_MODE: self.attributes.get(ATTR_MODE),
+        }
+        self._attr_current_power_w = self.device["status"].get("power_usage")

@@ -72,52 +72,22 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HiveWaterHeater(HiveEntity, WaterHeaterEntity):
     """Hive Water Heater Device."""
 
-    @property
-    def unique_id(self):
-        """Return unique ID of entity."""
-        return self._unique_id
+    _attr_name = HOTWATER_NAME
+    _attr_operation_list = SUPPORT_WATER_HEATER
+    _attr_supported_features = SUPPORT_FLAGS_HEATER
+    _attr_temperature_unit = TEMP_CELSIUS
 
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self.device["device_id"])},
-            "name": self.device["device_name"],
-            "model": self.device["deviceData"]["model"],
-            "manufacturer": self.device["deviceData"]["manufacturer"],
-            "sw_version": self.device["deviceData"]["version"],
-            "via_device": (DOMAIN, self.device["parentDevice"]),
+    def __init__(self, hive, hive_device):
+        """Initialize a Hive Water Heater Device."""
+        super().__init__(hive, hive_device)
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, hive_device["device_id"])},
+            "name": hive_device["device_name"],
+            "model": hive_device["deviceData"]["model"],
+            "manufacturer": hive_device["deviceData"]["manufacturer"],
+            "sw_version": hive_device["deviceData"]["version"],
+            "via_device": (DOMAIN, hive_device["parentDevice"]),
         }
-
-    @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        return SUPPORT_FLAGS_HEATER
-
-    @property
-    def name(self):
-        """Return the name of the water heater."""
-        return HOTWATER_NAME
-
-    @property
-    def available(self):
-        """Return if the device is available."""
-        return self.device["deviceData"]["online"]
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
-    @property
-    def current_operation(self):
-        """Return current operation."""
-        return HIVE_TO_HASS_STATE[self.device["status"]["current_operation"]]
-
-    @property
-    def operation_list(self):
-        """List of available operation modes."""
-        return SUPPORT_WATER_HEATER
 
     @refresh_system
     async def async_turn_on(self, **kwargs):
@@ -147,3 +117,7 @@ class HiveWaterHeater(HiveEntity, WaterHeaterEntity):
         """Update all Node data from Hive."""
         await self.hive.session.updateData(self.device)
         self.device = await self.hive.hotwater.getWaterHeater(self.device)
+        self._attr_available = self.device["deviceData"]["online"]
+        self._attr_current_operation = HIVE_TO_HASS_STATE[
+            self.device["status"]["current_operation"]
+        ]

@@ -34,72 +34,29 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HiveDeviceLight(HiveEntity, LightEntity):
     """Hive Active Light Device."""
 
-    @property
-    def unique_id(self):
-        """Return unique ID of entity."""
-        return self._unique_id
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self.device["device_id"])},
-            "name": self.device["device_name"],
-            "model": self.device["deviceData"]["model"],
-            "manufacturer": self.device["deviceData"]["manufacturer"],
-            "sw_version": self.device["deviceData"]["version"],
-            "via_device": (DOMAIN, self.device["parentDevice"]),
+    def __init__(self, hive, hive_device):
+        """Initialize a Hive Active Light Device."""
+        super().__init__(hive, hive_device)
+        self._attr_name = hive_device["haName"]
+        self._attr_max_mireds = hive_device.get("max_mireds")
+        self._attr_min_mireds = hive_device.get("min_mireds")
+        self._attr_supported_features = None
+        if hive_device["hiveType"] == "warmwhitelight":
+            self._attr_supported_features = SUPPORT_BRIGHTNESS
+        elif hive_device["hiveType"] == "tuneablelight":
+            self._attr_supported_features = SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
+        elif hive_device["hiveType"] == "colourtuneablelight":
+            self._attr_supported_features = (
+                SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
+            )
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, hive_device["device_id"])},
+            "name": hive_device["device_name"],
+            "model": hive_device["deviceData"]["model"],
+            "manufacturer": hive_device["deviceData"]["manufacturer"],
+            "sw_version": hive_device["deviceData"]["version"],
+            "via_device": (DOMAIN, hive_device["parentDevice"]),
         }
-
-    @property
-    def name(self):
-        """Return the display name of this light."""
-        return self.device["haName"]
-
-    @property
-    def available(self):
-        """Return if the device is available."""
-        return self.device["deviceData"]["online"]
-
-    @property
-    def extra_state_attributes(self):
-        """Show Device Attributes."""
-        return {
-            ATTR_MODE: self.attributes.get(ATTR_MODE),
-        }
-
-    @property
-    def brightness(self):
-        """Brightness of the light (an integer in the range 1-255)."""
-        return self.device["status"]["brightness"]
-
-    @property
-    def min_mireds(self):
-        """Return the coldest color_temp that this light supports."""
-        return self.device.get("min_mireds")
-
-    @property
-    def max_mireds(self):
-        """Return the warmest color_temp that this light supports."""
-        return self.device.get("max_mireds")
-
-    @property
-    def color_temp(self):
-        """Return the CT color value in mireds."""
-        return self.device["status"].get("color_temp")
-
-    @property
-    def hs_color(self):
-        """Return the hs color value."""
-        if self.device["status"]["mode"] == "COLOUR":
-            rgb = self.device["status"].get("hs_color")
-            return color_util.color_RGB_to_hs(*rgb)
-        return None
-
-    @property
-    def is_on(self):
-        """Return true if light is on."""
-        return self.device["status"]["state"]
 
     @refresh_system
     async def async_turn_on(self, **kwargs):
@@ -131,21 +88,19 @@ class HiveDeviceLight(HiveEntity, LightEntity):
         """Instruct the light to turn off."""
         await self.hive.light.turnOff(self.device)
 
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        supported_features = None
-        if self.device["hiveType"] == "warmwhitelight":
-            supported_features = SUPPORT_BRIGHTNESS
-        elif self.device["hiveType"] == "tuneablelight":
-            supported_features = SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP
-        elif self.device["hiveType"] == "colourtuneablelight":
-            supported_features = SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR
-
-        return supported_features
-
     async def async_update(self):
         """Update all Node data from Hive."""
         await self.hive.session.updateData(self.device)
         self.device = await self.hive.light.getLight(self.device)
         self.attributes.update(self.device.get("attributes", {}))
+        self._attr_available = self.device["deviceData"]["online"]
+        self._attr_extra_state_attributes = {
+            ATTR_MODE: self.attributes.get(ATTR_MODE),
+        }
+
+        self._attr_hs_color = None
+        if self.device["status"]["mode"] == "COLOUR":
+            rgb = self.device["status"].get("hs_color")
+            self._attr_hs_color = color_util.color_RGB_to_hs(*rgb)
+        self._attr_brightness = self.device["status"]["brightness"]
+        self._attr_color_temp = self.device["status"].get("color_temp")

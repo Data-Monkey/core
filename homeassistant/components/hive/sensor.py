@@ -29,49 +29,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HiveSensorEntity(HiveEntity, SensorEntity):
     """Hive Sensor Entity."""
 
-    @property
-    def unique_id(self):
-        """Return unique ID of entity."""
-        return self._unique_id
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self.device["device_id"])},
-            "name": self.device["device_name"],
-            "model": self.device["deviceData"]["model"],
-            "manufacturer": self.device["deviceData"]["manufacturer"],
-            "sw_version": self.device["deviceData"]["version"],
-            "via_device": (DOMAIN, self.device["parentDevice"]),
+    def __init__(self, hive, hive_device):
+        """Initialize a Hive Sensor Entity."""
+        super().__init__(hive, hive_device)
+        self._attr_name = hive_device["haName"]
+        self._attr_device_class = DEVICETYPE[hive_device["hiveType"]].get("type")
+        self._attr_unit_of_measurement = DEVICETYPE[hive_device["hiveType"]].get("unit")
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, hive_device["device_id"])},
+            "name": hive_device["device_name"],
+            "model": hive_device["deviceData"]["model"],
+            "manufacturer": hive_device["deviceData"]["manufacturer"],
+            "sw_version": hive_device["deviceData"]["version"],
+            "via_device": (DOMAIN, hive_device["parentDevice"]),
         }
-
-    @property
-    def available(self):
-        """Return if sensor is available."""
-        return self.device.get("deviceData", {}).get("online")
-
-    @property
-    def device_class(self):
-        """Device class of the entity."""
-        return DEVICETYPE[self.device["hiveType"]].get("type")
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return DEVICETYPE[self.device["hiveType"]].get("unit")
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self.device["haName"]
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self.device["status"]["state"]
 
     async def async_update(self):
         """Update all Node data from Hive."""
         await self.hive.session.updateData(self.device)
         self.device = await self.hive.sensor.getSensor(self.device)
+        self._attr_state = self.device["status"]["state"]
+        self._attr_available = self.device.get("deviceData", {}).get("online")
