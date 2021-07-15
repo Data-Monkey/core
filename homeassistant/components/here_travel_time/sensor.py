@@ -217,6 +217,8 @@ def _are_valid_client_credentials(here_client: herepy.RoutingApi) -> bool:
 class HERETravelTimeSensor(SensorEntity):
     """Representation of a HERE travel time sensor."""
 
+    _attr_unit_of_measurement = TIME_MINUTES
+
     def __init__(
         self,
         name: str,
@@ -227,21 +229,15 @@ class HERETravelTimeSensor(SensorEntity):
         here_data: HERETravelTimeData,
     ) -> None:
         """Initialize the sensor."""
-        self._name = name
+        self._attr_name = name
         self._origin_entity_id = origin_entity_id
         self._destination_entity_id = destination_entity_id
         self._here_data = here_data
-        self._unit_of_measurement = TIME_MINUTES
-        self._attrs = {
-            ATTR_UNIT_SYSTEM: self._here_data.units,
-            ATTR_MODE: self._here_data.travel_mode,
-            ATTR_TRAFFIC_MODE: self._here_data.traffic_mode,
-        }
-        if self._origin_entity_id is None:
-            self._here_data.origin = origin
+        if origin_entity_id is None:
+            here_data.origin = origin
 
-        if self._destination_entity_id is None:
-            self._here_data.destination = destination
+        if destination_entity_id is None:
+            here_data.destination = destination
 
     async def async_added_to_hass(self) -> None:
         """Delay the sensor update to avoid entity not found warnings."""
@@ -255,60 +251,6 @@ class HERETravelTimeSensor(SensorEntity):
             EVENT_HOMEASSISTANT_START, delayed_sensor_update
         )
 
-    @property
-    def state(self) -> str | None:
-        """Return the state of the sensor."""
-        if self._here_data.traffic_mode and self._here_data.traffic_time is not None:
-            return str(round(self._here_data.traffic_time / 60))
-        if self._here_data.base_time is not None:
-            return str(round(self._here_data.base_time / 60))
-
-        return None
-
-    @property
-    def name(self) -> str:
-        """Get the name of the sensor."""
-        return self._name
-
-    @property
-    def extra_state_attributes(
-        self,
-    ) -> dict[str, None | float | str | bool] | None:
-        """Return the state attributes."""
-        if self._here_data.base_time is None:
-            return None
-
-        res = self._attrs
-        if self._here_data.attribution is not None:
-            res[ATTR_ATTRIBUTION] = self._here_data.attribution
-        res[ATTR_DURATION] = self._here_data.base_time / 60
-        res[ATTR_DISTANCE] = self._here_data.distance
-        res[ATTR_ROUTE] = self._here_data.route
-        res[ATTR_DURATION_IN_TRAFFIC] = self._here_data.traffic_time / 60
-        res[ATTR_ORIGIN] = self._here_data.origin
-        res[ATTR_DESTINATION] = self._here_data.destination
-        res[ATTR_ORIGIN_NAME] = self._here_data.origin_name
-        res[ATTR_DESTINATION_NAME] = self._here_data.destination_name
-        return res
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit this state is expressed in."""
-        return self._unit_of_measurement
-
-    @property
-    def icon(self) -> str:
-        """Icon to use in the frontend depending on travel_mode."""
-        if self._here_data.travel_mode == TRAVEL_MODE_BICYCLE:
-            return ICON_BICYCLE
-        if self._here_data.travel_mode == TRAVEL_MODE_PEDESTRIAN:
-            return ICON_PEDESTRIAN
-        if self._here_data.travel_mode in TRAVEL_MODES_PUBLIC:
-            return ICON_PUBLIC
-        if self._here_data.travel_mode == TRAVEL_MODE_TRUCK:
-            return ICON_TRUCK
-        return ICON_CAR
-
     async def async_update(self) -> None:
         """Update Sensor Information."""
         # Convert device_trackers to HERE friendly location
@@ -321,8 +263,42 @@ class HERETravelTimeSensor(SensorEntity):
             self._here_data.destination = await self._get_location_from_entity(
                 self._destination_entity_id
             )
-
         await self.hass.async_add_executor_job(self._here_data.update)
+        self._attr_state = None
+        if self._here_data.traffic_mode and self._here_data.traffic_time is not None:
+            self._attr_state = str(round(self._here_data.traffic_time / 60))
+        elif self._here_data.base_time is not None:
+            self._attr_state = str(round(self._here_data.base_time / 60))
+
+        self._attr_icon = ICON_CAR
+        if self._here_data.travel_mode == TRAVEL_MODE_BICYCLE:
+            self._attr_icon = ICON_BICYCLE
+        elif self._here_data.travel_mode == TRAVEL_MODE_PEDESTRIAN:
+            self._attr_icon = ICON_PEDESTRIAN
+        elif self._here_data.travel_mode in TRAVEL_MODES_PUBLIC:
+            self._attr_icon = ICON_PUBLIC
+        elif self._here_data.travel_mode == TRAVEL_MODE_TRUCK:
+            self._attr_icon = ICON_TRUCK
+
+        if self._here_data.base_time is None:
+            self._attr_extra_state_attributes = None
+        else:
+            res = {
+                ATTR_UNIT_SYSTEM: self._here_data.units,
+                ATTR_MODE: self._here_data.travel_mode,
+                ATTR_TRAFFIC_MODE: self._here_data.traffic_mode,
+            }
+            if self._here_data.attribution is not None:
+                res[ATTR_ATTRIBUTION] = self._here_data.attribution
+            res[ATTR_DURATION] = self._here_data.base_time / 60
+            res[ATTR_DISTANCE] = self._here_data.distance
+            res[ATTR_ROUTE] = self._here_data.route
+            res[ATTR_DURATION_IN_TRAFFIC] = self._here_data.traffic_time / 60
+            res[ATTR_ORIGIN] = self._here_data.origin
+            res[ATTR_DESTINATION] = self._here_data.destination
+            res[ATTR_ORIGIN_NAME] = self._here_data.origin_name
+            res[ATTR_DESTINATION_NAME] = self._here_data.destination_name
+            self._attr_extra_state_attributes = res
 
     async def _get_location_from_entity(self, entity_id: str) -> str | None:
         """Get the location from the entity state or attributes."""
