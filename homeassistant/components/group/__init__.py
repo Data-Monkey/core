@@ -420,6 +420,8 @@ class GroupEntity(Entity):
 class Group(Entity):
     """Track a group of entity ids."""
 
+    _attr_should_poll = False
+
     def __init__(
         self,
         hass,
@@ -447,7 +449,7 @@ class Group(Entity):
         if mode:
             self.mode = all
         self._order = order
-        self._assumed_state = False
+        self._attr_assumed_state = False
         self._async_unsub_state_changed = None
 
     @staticmethod
@@ -517,11 +519,6 @@ class Group(Entity):
         return group
 
     @property
-    def should_poll(self):
-        """No need to poll because groups will update themselves."""
-        return False
-
-    @property
     def name(self):
         """Return the name of the group."""
         return self._name
@@ -554,11 +551,6 @@ class Group(Entity):
             data[ATTR_AUTO] = True
 
         return data
-
-    @property
-    def assumed_state(self):
-        """Test if any member has an assumed state."""
-        return self._assumed_state
 
     def update_tracked_entity_ids(self, entity_ids):
         """Update the member entity IDs."""
@@ -721,13 +713,13 @@ class Group(Entity):
 
         if (
             tr_state is None
-            or self._assumed_state
+            or self.assumed_state
             and not tr_state.attributes.get(ATTR_ASSUMED_STATE)
         ):
-            self._assumed_state = self.mode(self._assumed.values())
+            self._attr_assumed_state = self.mode(self._assumed.values())
 
         elif tr_state.attributes.get(ATTR_ASSUMED_STATE):
-            self._assumed_state = True
+            self._attr_assumed_state = True
 
         num_on_states = len(self._on_states)
         # If all the entity domains we are tracking

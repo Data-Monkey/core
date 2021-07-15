@@ -90,11 +90,12 @@ async def async_setup_platform(
 class MediaGroup(MediaPlayerEntity):
     """Representation of a Media Group."""
 
+    _attr_should_poll = False
+
     def __init__(self, name: str, entities: list[str]) -> None:
         """Initialize a Media Group entity."""
-        self._name = name
-        self._state: str | None = None
-        self._supported_features: int = 0
+        self._attr_name = name
+        self._attr_supported_features = 0
 
         self._entities = entities
         self._features: dict[str, set[str]] = {
@@ -174,26 +175,6 @@ class MediaGroup(MediaPlayerEntity):
             self.hass, self._entities, self.async_on_state_change
         )
         self.async_update_state()
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self._name
-
-    @property
-    def state(self) -> str | None:
-        """Return the state of the media group."""
-        return self._state
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return self._supported_features
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed for a media group."""
-        return False
 
     @property
     def device_state_attributes(self) -> dict:
@@ -371,13 +352,13 @@ class MediaGroup(MediaPlayerEntity):
 
         if states_values:
             if states_values.count(states_values[0]) == len(states_values):
-                self._state = states_values[0]
+                self._attr_state = states_values[0]
             elif any(state for state in states_values if state not in off_values):
-                self._state = STATE_ON
+                self._attr_state = STATE_ON
             else:
-                self._state = STATE_OFF
+                self._attr_state = STATE_OFF
         else:
-            self._state = None
+            self._attr_state = None
 
         supported_features = 0
         supported_features |= (
@@ -407,5 +388,5 @@ class MediaGroup(MediaPlayerEntity):
             else 0
         )
 
-        self._supported_features = supported_features
+        self._attr_supported_features = supported_features
         self.async_write_ha_state()
