@@ -53,27 +53,24 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class GstreamerDevice(MediaPlayerEntity):
     """Representation of a Gstreamer device."""
 
+    _attr_media_content_type = MEDIA_TYPE_MUSIC
+    _attr_supported_features = SUPPORT_GSTREAMER
+
     def __init__(self, player, name):
         """Initialize the Gstreamer device."""
         self._player = player
-        self._name = name or DOMAIN
-        self._state = STATE_IDLE
-        self._volume = None
-        self._duration = None
-        self._uri = None
-        self._title = None
-        self._artist = None
-        self._album = None
+        self._attr_name = name or DOMAIN
+        self._attr_state = STATE_IDLE
 
     def update(self):
         """Update properties."""
-        self._state = self._player.state
-        self._volume = self._player.volume
-        self._duration = self._player.duration
-        self._uri = self._player.uri
-        self._title = self._player.title
-        self._album = self._player.album
-        self._artist = self._player.artist
+        self._attr_state = self._player.state
+        self._attr_volume_level = self._player.volume
+        self._attr_media_duration = self._player.duration
+        self._attr_media_content_id = self._player.uri
+        self._attr_media_title = self._player.title
+        self._attr_media_album_name = self._player.album
+        self._attr_media_artist = self._player.artist
 
     def set_volume_level(self, volume):
         """Set the volume level."""
@@ -97,53 +94,3 @@ class GstreamerDevice(MediaPlayerEntity):
     def media_next_track(self):
         """Next track."""
         self._player.next()
-
-    @property
-    def media_content_id(self):
-        """Content ID of currently playing media."""
-        return self._uri
-
-    @property
-    def content_type(self):
-        """Content type of currently playing media."""
-        return MEDIA_TYPE_MUSIC
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def volume_level(self):
-        """Return the volume level."""
-        return self._volume
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        return SUPPORT_GSTREAMER
-
-    @property
-    def state(self):
-        """Return the state of the player."""
-        return self._state
-
-    @property
-    def media_duration(self):
-        """Duration of current playing media in seconds."""
-        return self._duration
-
-    @property
-    def media_title(self):
-        """Media title."""
-        return self._title
-
-    @property
-    def media_artist(self):
-        """Media artist."""
-        return self._artist
-
-    @property
-    def media_album_name(self):
-        """Media album."""
-        return self._album
