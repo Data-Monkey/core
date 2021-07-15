@@ -30,7 +30,6 @@ from homeassistant.components.media_player.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_IDLE, STATE_PAUSED, STATE_PLAYING
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util.dt import utcnow
 
 from .const import DATA_SOURCE_MANAGER, DOMAIN as HEOS_DOMAIN, SIGNAL_HEOS_UPDATED
@@ -90,13 +89,26 @@ def log_command_error(command: str):
 class HeosMediaPlayer(MediaPlayerEntity):
     """The HEOS player."""
 
+    _attr_media_content_type = MEDIA_TYPE_MUSIC
+    _attr_media_image_remotely_accessible = True
+    _attr_should_poll = False
+
     def __init__(self, player):
         """Initialize."""
         self._media_position_updated_at = None
         self._player = player
+        self._attr_name = player.name
+        self._attr_unique_id = str(player.player_id)
         self._signals = []
-        self._supported_features = BASE_SUPPORTED_FEATURES
+        self._attr_supported_features = BASE_SUPPORTED_FEATURES
         self._source_manager = None
+        self._attr_device_info = {
+            "identifiers": {(HEOS_DOMAIN, player.player_id)},
+            "name": player.name,
+            "model": player.model,
+            "manufacturer": "HEOS",
+            "sw_version": player.version,
+        }
 
     async def _player_update(self, player_id, event):
         """Handle player attribute updated."""
@@ -236,7 +248,9 @@ class HeosMediaPlayer(MediaPlayerEntity):
         """Update supported features of the player."""
         controls = self._player.now_playing_media.supported_controls
         current_support = [CONTROL_TO_SUPPORT[control] for control in controls]
-        self._supported_features = reduce(ior, current_support, BASE_SUPPORTED_FEATURES)
+        self._attr_supported_features = reduce(
+            ior, current_support, BASE_SUPPORTED_FEATURES
+        )
 
         if self._source_manager is None:
             self._source_manager = self.hass.data[HEOS_DOMAIN][DATA_SOURCE_MANAGER]
@@ -251,17 +265,6 @@ class HeosMediaPlayer(MediaPlayerEntity):
     def available(self) -> bool:
         """Return True if the device is available."""
         return self._player.available
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Get attributes about the device."""
-        return {
-            "identifiers": {(HEOS_DOMAIN, self._player.player_id)},
-            "name": self._player.name,
-            "model": self._player.model,
-            "manufacturer": "HEOS",
-            "sw_version": self._player.version,
-        }
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -295,11 +298,6 @@ class HeosMediaPlayer(MediaPlayerEntity):
         return self._player.now_playing_media.media_id
 
     @property
-    def media_content_type(self) -> str:
-        """Content type of current playing media."""
-        return MEDIA_TYPE_MUSIC
-
-    @property
     def media_duration(self):
         """Duration of current playing media in seconds."""
         duration = self._player.now_playing_media.duration
@@ -324,11 +322,6 @@ class HeosMediaPlayer(MediaPlayerEntity):
         return self._media_position_updated_at
 
     @property
-    def media_image_remotely_accessible(self) -> bool:
-        """If the image url is remotely accessible."""
-        return True
-
-    @property
     def media_image_url(self) -> str:
         """Image url of current playing media."""
         # May be an empty string, if so, return None
@@ -339,16 +332,6 @@ class HeosMediaPlayer(MediaPlayerEntity):
     def media_title(self) -> str:
         """Title of current playing media."""
         return self._player.now_playing_media.song
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return self._player.name
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed for this device."""
-        return False
 
     @property
     def shuffle(self) -> bool:
@@ -369,16 +352,6 @@ class HeosMediaPlayer(MediaPlayerEntity):
     def state(self) -> str:
         """State of the player."""
         return PLAY_STATE_TO_STATE[self._player.state]
-
-    @property
-    def supported_features(self) -> int:
-        """Flag media player features that are supported."""
-        return self._supported_features
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return str(self._player.player_id)
 
     @property
     def volume_level(self) -> float:
