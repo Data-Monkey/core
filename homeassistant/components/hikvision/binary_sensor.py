@@ -190,87 +190,53 @@ class HikvisionData:
 class HikvisionBinarySensor(BinarySensorEntity):
     """Representation of a Hikvision binary sensor."""
 
+    _attr_should_poll = False
+
     def __init__(self, hass, sensor, channel, cam, delay):
         """Initialize the binary_sensor."""
         self._hass = hass
         self._cam = cam
         self._sensor = sensor
         self._channel = channel
-
-        if self._cam.type == "NVR":
-            self._name = f"{self._cam.name} {sensor} {channel}"
+        if cam.type == "NVR":
+            self._attr_name = f"{cam.name} {sensor} {channel}"
         else:
-            self._name = f"{self._cam.name} {sensor}"
-
-        self._id = f"{self._cam.cam_id}.{sensor}.{channel}"
-
+            self._attr_name = f"{cam.name} {sensor}"
+        self._attr_unique_id = f"{cam.cam_id}.{sensor}.{channel}"
+        try:
+            self._attr_device_class = DEVICE_CLASS_MAP[sensor]
+        except KeyError:
+            pass
         if delay is None:
             self._delay = 0
         else:
             self._delay = delay
-
         self._timer = None
 
         # Register callback function with pyHik
-        self._cam.camdata.add_update_callback(self._update_callback, self._id)
-
-    def _sensor_state(self):
-        """Extract sensor state."""
-        return self._cam.get_attributes(self._sensor, self._channel)[0]
+        cam.camdata.add_update_callback(self._update_callback, self.unique_id)
 
     def _sensor_last_update(self):
         """Extract sensor last update time."""
         return self._cam.get_attributes(self._sensor, self._channel)[3]
 
-    @property
-    def name(self):
-        """Return the name of the Hikvision sensor."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self._id
-
-    @property
-    def is_on(self):
-        """Return true if sensor is on."""
-        return self._sensor_state()
-
-    @property
-    def device_class(self):
-        """Return the class of this sensor, from DEVICE_CLASSES."""
-        try:
-            return DEVICE_CLASS_MAP[self._sensor]
-        except KeyError:
-            # Sensor must be unknown to us, add as generic
-            return None
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        attr = {ATTR_LAST_TRIP_TIME: self._sensor_last_update()}
-
-        if self._delay != 0:
-            attr[ATTR_DELAY] = self._delay
-
-        return attr
-
     def _update_callback(self, msg):
         """Update the sensor's state, if needed."""
         _LOGGER.debug("Callback signal from: %s", msg)
+
+        self._attr_is_on = self._cam.get_attributes(self._sensor, self._channel)[0]
+
+        attr = {ATTR_LAST_TRIP_TIME: self._sensor_last_update()}
+        if self._delay != 0:
+            attr[ATTR_DELAY] = self._delay
+        self._attr_extra_state_attributes = attr
 
         if self._delay > 0 and not self.is_on:
             # Set timer to wait until updating the state
             def _delay_update(now):
                 """Timer callback for sensor update."""
                 _LOGGER.debug(
-                    "%s Called delayed (%ssec) update", self._name, self._delay
+                    "%s Called delayed (%ssec) update", self.name, self._delay
                 )
                 self.schedule_update_ha_state()
                 self._timer = None
