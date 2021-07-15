@@ -645,51 +645,25 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class GrowattInverter(SensorEntity):
     """Representation of a Growatt Sensor."""
 
+    _attr_icon = "mdi:solar-power"
+
     def __init__(self, probe, name, sensor, unique_id):
         """Initialize a PVOutput sensor."""
         self.sensor = sensor
         self.probe = probe
-        self._name = name
-        self._state = None
-        self._unique_id = unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{self._name} {SENSOR_TYPES[self.sensor][0]}"
-
-    @property
-    def unique_id(self):
-        """Return the unique id of the sensor."""
-        return self._unique_id
-
-    @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return "mdi:solar-power"
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        result = self.probe.get_data(SENSOR_TYPES[self.sensor][2])
-        round_to = SENSOR_TYPES[self.sensor][3].get("round")
-        if round_to is not None:
-            result = round(result, round_to)
-        return result
-
-    @property
-    def device_class(self):
-        """Return the device class of the sensor."""
-        return SENSOR_TYPES[self.sensor][3].get("device_class")
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return SENSOR_TYPES[self.sensor][1]
+        self._attr_unique_id = unique_id
+        self._attr_name = f"{name} {SENSOR_TYPES[sensor][0]}"
+        self._attr_device_class = SENSOR_TYPES[sensor][3].get("device_class")
+        self._attr_unit_of_measurement = SENSOR_TYPES[sensor][1]
 
     def update(self):
         """Get the latest data from the Growat API and updates the state."""
         self.probe.update()
+        result = self.probe.get_data(SENSOR_TYPES[self.sensor][2])
+        round_to = SENSOR_TYPES[self.sensor][3].get("round")
+        if round_to is not None:
+            result = round(result, round_to)
+        self._attr_state = result
 
 
 class GrowattData:
