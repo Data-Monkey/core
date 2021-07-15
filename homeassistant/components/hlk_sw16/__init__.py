@@ -141,6 +141,8 @@ class SW16Device(Entity):
     Contains the common logic for HLK-SW16 entities.
     """
 
+    _attr_should_poll = False
+
     def __init__(self, device_port, entry_id, client):
         """Initialize the device."""
         # HLK-SW16 specific attributes for every component type
@@ -148,34 +150,16 @@ class SW16Device(Entity):
         self._device_port = device_port
         self._is_on = None
         self._client = client
-        self._name = device_port
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return f"{self._entry_id}_{self._device_port}"
+        self._attr_name = device_port
+        self._attr_unique_id = f"{entry_id}_{device_port}"
 
     @callback
     def handle_event_callback(self, event):
         """Propagate changes through ha."""
         _LOGGER.debug("Relay %s new state callback: %r", self.unique_id, event)
         self._is_on = event
+        self._attr_available = bool(self._client.is_connected)
         self.async_write_ha_state()
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def name(self):
-        """Return a name for the device."""
-        return self._name
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return bool(self._client.is_connected)
 
     @callback
     def _availability_callback(self, availability):
