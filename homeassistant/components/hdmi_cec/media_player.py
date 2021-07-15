@@ -67,7 +67,33 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
     def __init__(self, device, logical) -> None:
         """Initialize the HDMI device."""
         CecEntity.__init__(self, device, logical)
-        self.entity_id = f"{DOMAIN}.hdmi_{hex(self._logical_address)[2:]}"
+        self.entity_id = f"{DOMAIN}.hdmi_{hex(logical)[2:]}"
+        self._attr_supported_features = SUPPORT_TURN_ON | SUPPORT_TURN_OFF
+        if self.type_id == TYPE_RECORDER or self.type == TYPE_PLAYBACK:
+            self._attr_supported_features = (
+                SUPPORT_TURN_ON
+                | SUPPORT_TURN_OFF
+                | SUPPORT_PLAY_MEDIA
+                | SUPPORT_PAUSE
+                | SUPPORT_STOP
+                | SUPPORT_PREVIOUS_TRACK
+                | SUPPORT_NEXT_TRACK
+            )
+        elif self.type == TYPE_TUNER:
+            self._attr_supported_features = (
+                SUPPORT_TURN_ON
+                | SUPPORT_TURN_OFF
+                | SUPPORT_PLAY_MEDIA
+                | SUPPORT_PAUSE
+                | SUPPORT_STOP
+            )
+        elif self.type_id == TYPE_AUDIO:
+            self._attr_supported_features = (
+                SUPPORT_TURN_ON
+                | SUPPORT_TURN_OFF
+                | SUPPORT_VOLUME_STEP
+                | SUPPORT_VOLUME_MUTE
+            )
 
     def send_keypress(self, key):
         """Send keypress to CEC adapter."""
@@ -92,7 +118,7 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
     def turn_on(self):
         """Turn device on."""
         self._device.turn_on()
-        self._state = STATE_ON
+        self._attr_state = STATE_ON
 
     def clear_playlist(self):
         """Clear players playlist."""
@@ -101,12 +127,12 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
     def turn_off(self):
         """Turn device off."""
         self._device.turn_off()
-        self._state = STATE_OFF
+        self._attr_state = STATE_OFF
 
     def media_stop(self):
         """Stop playback."""
         self.send_keypress(KEY_STOP)
-        self._state = STATE_IDLE
+        self._attr_state = STATE_IDLE
 
     def play_media(self, media_type, media_id, **kwargs):
         """Not supported."""
@@ -127,7 +153,7 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
     def media_pause(self):
         """Pause playback."""
         self.send_keypress(KEY_PAUSE)
-        self._state = STATE_PAUSED
+        self._attr_state = STATE_PAUSED
 
     def select_source(self, source):
         """Not supported."""
@@ -136,7 +162,7 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
     def media_play(self):
         """Start playback."""
         self.send_keypress(KEY_PLAY)
-        self._state = STATE_PLAYING
+        self._attr_state = STATE_PLAYING
 
     def volume_up(self):
         """Increase volume."""
@@ -148,54 +174,19 @@ class CecPlayerEntity(CecEntity, MediaPlayerEntity):
         _LOGGER.debug("%s: volume down", self._logical_address)
         self.send_keypress(KEY_VOLUME_DOWN)
 
-    @property
-    def state(self) -> str:
-        """Cache state of device."""
-        return self._state
-
     def update(self):
         """Update device status."""
         device = self._device
         if device.power_status in [POWER_OFF, 3]:
-            self._state = STATE_OFF
+            self._attr_state = STATE_OFF
         elif not self.support_pause:
             if device.power_status in [POWER_ON, 4]:
-                self._state = STATE_ON
+                self._attr_state = STATE_ON
         elif device.status == STATUS_PLAY:
-            self._state = STATE_PLAYING
+            self._attr_state = STATE_PLAYING
         elif device.status == STATUS_STOP:
-            self._state = STATE_IDLE
+            self._attr_state = STATE_IDLE
         elif device.status == STATUS_STILL:
-            self._state = STATE_PAUSED
+            self._attr_state = STATE_PAUSED
         else:
             _LOGGER.warning("Unknown state: %s", device.status)
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        if self.type_id == TYPE_RECORDER or self.type == TYPE_PLAYBACK:
-            return (
-                SUPPORT_TURN_ON
-                | SUPPORT_TURN_OFF
-                | SUPPORT_PLAY_MEDIA
-                | SUPPORT_PAUSE
-                | SUPPORT_STOP
-                | SUPPORT_PREVIOUS_TRACK
-                | SUPPORT_NEXT_TRACK
-            )
-        if self.type == TYPE_TUNER:
-            return (
-                SUPPORT_TURN_ON
-                | SUPPORT_TURN_OFF
-                | SUPPORT_PLAY_MEDIA
-                | SUPPORT_PAUSE
-                | SUPPORT_STOP
-            )
-        if self.type_id == TYPE_AUDIO:
-            return (
-                SUPPORT_TURN_ON
-                | SUPPORT_TURN_OFF
-                | SUPPORT_VOLUME_STEP
-                | SUPPORT_VOLUME_MUTE
-            )
-        return SUPPORT_TURN_ON | SUPPORT_TURN_OFF

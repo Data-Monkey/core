@@ -28,35 +28,25 @@ class CecSwitchEntity(CecEntity, SwitchEntity):
     def __init__(self, device, logical) -> None:
         """Initialize the HDMI device."""
         CecEntity.__init__(self, device, logical)
-        self.entity_id = f"{DOMAIN}.hdmi_{hex(self._logical_address)[2:]}"
+        self.entity_id = f"{DOMAIN}.hdmi_{hex(logical)[2:]}"
 
     def turn_on(self, **kwargs) -> None:
         """Turn device on."""
         self._device.turn_on()
-        self._state = STATE_ON
+        self._attr_state = STATE_ON
+        self._attr_is_on = True
         self.schedule_update_ha_state(force_refresh=False)
 
     def turn_off(self, **kwargs) -> None:
         """Turn device off."""
         self._device.turn_off()
-        self._state = STATE_OFF
+        self._attr_state = STATE_OFF
+        self._attr_is_on = False
         self.schedule_update_ha_state(force_refresh=False)
 
     def toggle(self, **kwargs):
         """Toggle the entity."""
         self._device.toggle()
-        if self._state == STATE_ON:
-            self._state = STATE_OFF
-        else:
-            self._state = STATE_ON
+        self._attr_state = STATE_OFF if self.state == STATE_ON else STATE_ON
+        self._attr_is_on = self.state == STATE_ON
         self.schedule_update_ha_state(force_refresh=False)
-
-    @property
-    def is_on(self) -> bool:
-        """Return True if entity is on."""
-        return self._state == STATE_ON
-
-    @property
-    def state(self) -> str:
-        """Return the cached state of device."""
-        return self._state

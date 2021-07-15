@@ -372,35 +372,60 @@ def setup(hass: HomeAssistant, base_config):  # noqa: C901
 class CecEntity(Entity):
     """Representation of a HDMI CEC device entity."""
 
+    _attr_should_poll = False
+
     def __init__(self, device, logical) -> None:
         """Initialize the device."""
         self._device = device
-        self._icon = None
-        self._state = None
         self._logical_address = logical
-        self.entity_id = "%s.%d" % (DOMAIN, self._logical_address)
+        self._attr_icon = ICON_UNKNOWN
+        if device.type in ICONS_BY_TYPE:
+            self._attr_icon = ICONS_BY_TYPE.get(device.type)
+        self.entity_id = "%s.%d" % (DOMAIN, logical)
+        self._attr_name = (
+            f"{device.vendor} {device.osd_name}"
+            if (
+                device.osd_name is not None
+                and device.vendor is not None
+                and device.vendor != "Unknown"
+            )
+            else "%s %d" % (device.type_name, logical)
+            if device.osd_name is None
+            else "%s %d (%s)" % (device.type_name, logical, device.osd_name)
+        )
 
     def _hdmi_cec_unavailable(self, callback_event):
         # Change state to unavailable. Without this, entity would remain in
         # its last state, since the state changes are pushed.
-        self._state = STATE_UNAVAILABLE
+        self._attr_state = STATE_UNAVAILABLE
         self.schedule_update_ha_state(False)
 
     def update(self):
         """Update device status."""
         device = self._device
         if device.power_status in [POWER_OFF, 3]:
-            self._state = STATE_OFF
+            self._attr_state = STATE_OFF
         elif device.status == STATUS_PLAY:
-            self._state = STATE_PLAYING
+            self._attr_state = STATE_PLAYING
         elif device.status == STATUS_STOP:
-            self._state = STATE_IDLE
+            self._attr_state = STATE_IDLE
         elif device.status == STATUS_STILL:
-            self._state = STATE_PAUSED
+            self._attr_state = STATE_PAUSED
         elif device.power_status in [POWER_ON, 4]:
-            self._state = STATE_ON
+            self._attr_state = STATE_ON
         else:
             _LOGGER.warning("Unknown state: %d", device.power_status)
+
+        state_attr = {}
+        if self.vendor_id is not None:
+            state_attr[ATTR_VENDOR_ID] = self.vendor_id
+            state_attr[ATTR_VENDOR_NAME] = self.vendor_name
+        if self.type_id is not None:
+            state_attr[ATTR_TYPE_ID] = self.type_id
+            state_attr[ATTR_TYPE] = self.type
+        if self.physical_address is not None:
+            state_attr[ATTR_PHYSICAL_ADDRESS] = self.physical_address
+        self._attr_extra_state_attributes = state_attr
 
     async def async_added_to_hass(self):
         """Register HDMI callbacks after initialization."""
@@ -412,31 +437,6 @@ class CecEntity(Entity):
     def _update(self, device=None):
         """Device status changed, schedule an update."""
         self.schedule_update_ha_state(True)
-
-    @property
-    def should_poll(self):
-        """
-        Return false.
-
-        CecEntity.update() is called by the HDMI network when there is new data.
-        """
-        return False
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return (
-            f"{self.vendor_name} {self._device.osd_name}"
-            if (
-                self._device.osd_name is not None
-                and self.vendor_name is not None
-                and self.vendor_name != "Unknown"
-            )
-            else "%s %d" % (self._device.type_name, self._logical_address)
-            if self._device.osd_name is None
-            else "%s %d (%s)"
-            % (self._device.type_name, self._logical_address, self._device.osd_name)
-        )
 
     @property
     def vendor_id(self):
@@ -462,28 +462,3 @@ class CecEntity(Entity):
     def type_id(self):
         """Return the type ID of device."""
         return self._device.type
-
-    @property
-    def icon(self):
-        """Return the icon for device by its type."""
-        return (
-            self._icon
-            if self._icon is not None
-            else ICONS_BY_TYPE.get(self._device.type)
-            if self._device.type in ICONS_BY_TYPE
-            else ICON_UNKNOWN
-        )
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        state_attr = {}
-        if self.vendor_id is not None:
-            state_attr[ATTR_VENDOR_ID] = self.vendor_id
-            state_attr[ATTR_VENDOR_NAME] = self.vendor_name
-        if self.type_id is not None:
-            state_attr[ATTR_TYPE_ID] = self.type_id
-            state_attr[ATTR_TYPE] = self.type
-        if self.physical_address is not None:
-            state_attr[ATTR_PHYSICAL_ADDRESS] = self.physical_address
-        return state_attr
