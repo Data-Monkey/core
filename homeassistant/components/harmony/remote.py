@@ -79,25 +79,24 @@ async def async_setup_entry(
 class HarmonyRemote(ConnectionStateMixin, remote.RemoteEntity, RestoreEntity):
     """Remote representation used to control a Harmony device."""
 
+    _attr_should_poll = False
+    _attr_supported_features = SUPPORT_ACTIVITY
+
     def __init__(self, data, activity, delay_secs, out_path):
         """Initialize HarmonyRemote class."""
         super().__init__()
         self._data = data
         self._name = data.name
         self._state = None
-        self._current_activity = ACTIVITY_POWER_OFF
+        self._attr_current_activity = ACTIVITY_POWER_OFF
         self.default_activity = activity
         self._activity_starting = None
         self._is_initial_update = True
         self.delay_secs = delay_secs
-        self._unique_id = data.unique_id
+        self._attr_unique_id = data.unique_id
         self._last_activity = None
         self._config_path = out_path
-
-    @property
-    def supported_features(self):
-        """Supported features for the remote."""
-        return SUPPORT_ACTIVITY
+        self._attr_device_info = data.device_info(DOMAIN)
 
     async def _async_update_options(self, data):
         """Change options when the options flow does."""
@@ -159,29 +158,9 @@ class HarmonyRemote(ConnectionStateMixin, remote.RemoteEntity, RestoreEntity):
         self._last_activity = last_state.attributes[ATTR_LAST_ACTIVITY]
 
     @property
-    def device_info(self):
-        """Return device info."""
-        return self._data.device_info(DOMAIN)
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return self._unique_id
-
-    @property
     def name(self):
         """Return the Harmony device's name."""
         return self._name
-
-    @property
-    def should_poll(self):
-        """Return the fact that we should not be polled."""
-        return False
-
-    @property
-    def current_activity(self):
-        """Return the current activity."""
-        return self._current_activity
 
     @property
     def activity_list(self):
@@ -198,11 +177,6 @@ class HarmonyRemote(ConnectionStateMixin, remote.RemoteEntity, RestoreEntity):
         }
 
     @property
-    def is_on(self):
-        """Return False if PowerOff is the current activity, otherwise True."""
-        return self._current_activity not in [None, "PowerOff"]
-
-    @property
     def available(self):
         """Return True if connected to Hub, otherwise False."""
         return self._data.available
@@ -212,7 +186,8 @@ class HarmonyRemote(ConnectionStateMixin, remote.RemoteEntity, RestoreEntity):
         """Call for updating the current activity."""
         activity_id, activity_name = activity_info
         _LOGGER.debug("%s: activity reported as: %s", self._name, activity_name)
-        self._current_activity = activity_name
+        self._attr_current_activity = activity_name
+        self._attr_is_on = activity_name not in [None, "PowerOff"]
         if self._is_initial_update:
             self._is_initial_update = False
         else:
@@ -277,6 +252,7 @@ class HarmonyRemote(ConnectionStateMixin, remote.RemoteEntity, RestoreEntity):
         """Sync the Harmony device with the web service."""
         if await self._data.sync():
             await self.hass.async_add_executor_job(self.write_config_file)
+        self._attr_available = self._data.available
 
     def write_config_file(self):
         """Write Harmony configuration file.

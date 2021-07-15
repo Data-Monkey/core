@@ -30,6 +30,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HarmonyActivitySwitch(ConnectionStateMixin, SwitchEntity):
     """Switch representation of a Harmony activity."""
 
+    _attr_should_poll = False
+
     def __init__(self, name: str, activity: dict, data: HarmonyData) -> None:
         """Initialize HarmonyActivitySwitch class."""
         super().__init__()
@@ -37,6 +39,8 @@ class HarmonyActivitySwitch(ConnectionStateMixin, SwitchEntity):
         self._activity_name = activity["label"]
         self._activity_id = activity["id"]
         self._data = data
+        self._attr_unique_id = f"activity_{activity['id']}"
+        self._attr_device_info = data.device_info(DOMAIN)
 
     @property
     def name(self):
@@ -44,25 +48,10 @@ class HarmonyActivitySwitch(ConnectionStateMixin, SwitchEntity):
         return self._name
 
     @property
-    def unique_id(self):
-        """Return the unique id."""
-        return f"activity_{self._activity_id}"
-
-    @property
-    def device_info(self):
-        """Return device info."""
-        return self._data.device_info(DOMAIN)
-
-    @property
     def is_on(self):
         """Return if the current activity is the one for this switch."""
         _, activity_name = self._data.current_activity
         return activity_name == self._activity_name
-
-    @property
-    def should_poll(self):
-        """Return that we shouldn't be polled."""
-        return False
 
     @property
     def available(self):
