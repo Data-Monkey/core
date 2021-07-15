@@ -63,54 +63,32 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HddTempSensor(SensorEntity):
     """Representation of a HDDTemp sensor."""
 
+    _attr_device_class = DEVICE_CLASS_TEMPERATURE
+
     def __init__(self, name, disk, hddtemp):
         """Initialize a HDDTemp sensor."""
         self.hddtemp = hddtemp
         self.disk = disk
-        self._name = f"{name} {disk}"
-        self._state = None
-        self._details = None
-        self._unit = None
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_TEMPERATURE
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._unit
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        if self._details is not None:
-            return {ATTR_DEVICE: self._details[0], ATTR_MODEL: self._details[1]}
+        self._attr_name = f"{name} {disk}"
 
     def update(self):
         """Get the latest data from HDDTemp daemon and updates the state."""
         self.hddtemp.update()
 
         if self.hddtemp.data and self.disk in self.hddtemp.data:
-            self._details = self.hddtemp.data[self.disk].split("|")
-            self._state = self._details[2]
-            if self._details is not None and self._details[3] == "F":
-                self._unit = TEMP_FAHRENHEIT
-            else:
-                self._unit = TEMP_CELSIUS
+            details = self.hddtemp.data[self.disk].split("|")
+            self._attr_state = details[2]
+            if details is not None:
+                self._attr_extra_state_attributes = {
+                    ATTR_DEVICE: details[0],
+                    ATTR_MODEL: details[1],
+                }
+                if details[3] == "F":
+                    self._attr_unit_of_measurement = TEMP_FAHRENHEIT
+                else:
+                    self._attr_unit_of_measurement = TEMP_CELSIUS
         else:
-            self._state = None
+            self._attr_state = None
 
 
 class HddTempData:
