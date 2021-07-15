@@ -65,39 +65,22 @@ class HomeControlSwitchEntity(CoordinatorEntity, SwitchEntity):
     def __init__(self, coordinator, idx):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
-        self.idx = idx
-        self.module = self.coordinator.data[self.idx]
-
-    @property
-    def name(self):
-        """Name of the device."""
-        return self.module.name
-
-    @property
-    def unique_id(self):
-        """ID (unique) of the device."""
-        return self.idx
-
-    @property
-    def device_info(self):
-        """Device information."""
-        return {
+        self.module = coordinator.data[idx]
+        self._attr_name = self.module.name
+        self._attr_unique_id = idx
+        self._attr_device_class = DEVICE_CLASS_SWITCH
+        if self.module.device == "plug":
+            self._attr_device_class = DEVICE_CLASS_OUTLET
+        self._attr_device_info = {
             "identifiers": {
                 # Unique identifiers within the domain
-                (DOMAIN, self.unique_id)
+                (DOMAIN, idx)
             },
             "name": self.name,
             "manufacturer": "Legrand",
             "model": HW_TYPE.get(self.module.hw_type),
             "sw_version": self.module.fw,
         }
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        if self.module.device == "plug":
-            return DEVICE_CLASS_OUTLET
-        return DEVICE_CLASS_SWITCH
 
     @property
     def available(self) -> bool:
