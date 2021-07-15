@@ -130,11 +130,11 @@ class HabitipySensor(SensorEntity):
 
     def __init__(self, name, sensor_name, updater):
         """Initialize a generic Habitica sensor."""
-        self._name = name
-        self._sensor_name = sensor_name
+        self._attr_name = f"{DOMAIN}_{name}_{sensor_name}"
+        self._attr_icon = SENSORS_TYPES[sensor_name].icon
         self._sensor_type = SENSORS_TYPES[sensor_name]
-        self._state = None
         self._updater = updater
+        self._attr_unit_of_measurement = SENSORS_TYPES[sensor_name].unit
 
     async def async_update(self):
         """Update Condition and Forecast."""
@@ -142,27 +142,7 @@ class HabitipySensor(SensorEntity):
         data = self._updater.data
         for element in self._sensor_type.path:
             data = data[element]
-        self._state = data
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return self._sensor_type.icon
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{DOMAIN}_{self._name}_{self._sensor_name}"
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._sensor_type.unit
+        self._attr_state = data
 
 
 class HabitipyTaskSensor(SensorEntity):
@@ -170,11 +150,11 @@ class HabitipyTaskSensor(SensorEntity):
 
     def __init__(self, name, task_name, updater):
         """Initialize a generic Habitica task."""
-        self._name = name
-        self._task_name = task_name
+        self._attr_name = f"{DOMAIN}_{name}_{task_name}"
+        self._attr_icon = TASKS_TYPES[task_name].icon
         self._task_type = TASKS_TYPES[task_name]
-        self._state = None
         self._updater = updater
+        self._attr_unit_of_measurement = TASKS_TYPES[task_name].unit
 
     async def async_update(self):
         """Update Condition and Forecast."""
@@ -182,26 +162,7 @@ class HabitipyTaskSensor(SensorEntity):
         all_tasks = self._updater.tasks
         for element in self._task_type.path:
             tasks_length = len(all_tasks[element])
-        self._state = tasks_length
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return self._task_type.icon
-
-    @property
-    def name(self):
-        """Return the name of the task."""
-        return f"{DOMAIN}_{self._name}_{self._task_name}"
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of all user tasks."""
+        self._attr_state = tasks_length
         if self._updater.tasks is not None:
             all_received_tasks = self._updater.tasks
             for element in self._task_type.path:
@@ -217,9 +178,4 @@ class HabitipyTaskSensor(SensorEntity):
                     if value:
                         task[map_key] = value
                 attrs[task_id] = task
-            return attrs
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._task_type.unit
+            self._attr_extra_state_attributes = attrs
