@@ -5,7 +5,7 @@ from unittest.mock import patch
 from huawei_lte_api.enums.client import ResponseCodeEnum
 from huawei_lte_api.enums.user import LoginErrorEnum, LoginStateEnum, PasswordTypeEnum
 import pytest
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, Timeout
 from requests_mock import ANY
 
 from homeassistant import config_entries, data_entry_flow
@@ -99,6 +99,15 @@ async def test_connection_error(hass, requests_mock):
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
     assert result["errors"] == {CONF_URL: "unknown"}
+
+    requests_mock.request(ANY, ANY, exc=Timeout)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}, data=FIXTURE_USER_INPUT
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {CONF_URL: "connection_timeout"}
 
 
 @pytest.fixture
