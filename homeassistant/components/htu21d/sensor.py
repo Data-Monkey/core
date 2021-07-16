@@ -85,27 +85,11 @@ class HTU21DSensor(SensorEntity):
 
     def __init__(self, htu21d_client, name, variable, unit):
         """Initialize the sensor."""
-        self._name = f"{name}_{variable}"
+        self._attr_name = f"{name}_{variable}"
         self._variable = variable
-        self._unit_of_measurement = unit
+        self._attr_unit_of_measurement = unit
         self._client = htu21d_client
-        self._state = None
         self._attr_device_class = DEVICE_CLASS_MAP[variable]
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self) -> int:
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement of the sensor."""
-        return self._unit_of_measurement
 
     async def async_update(self):
         """Get the latest data from the HTU21D sensor and update the state."""
@@ -117,6 +101,6 @@ class HTU21DSensor(SensorEntity):
                     value = celsius_to_fahrenheit(value)
             else:
                 value = round(self._client.sensor.humidity, 1)
-            self._state = value
+            self._attr_state = value
         else:
             _LOGGER.warning("Bad sample")
