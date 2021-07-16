@@ -48,15 +48,22 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HMThermostat(HMDevice, ClimateEntity):
     """Representation of a Homematic thermostat."""
 
-    @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        return SUPPORT_FLAGS
+    _attr_max_temp = 30.5
+    _attr_min_temp = 4.5
+    _attr_supported_features = SUPPORT_FLAGS
+    _attr_target_temperature_step = 0.5
+    _attr_temperature_unit = TEMP_CELSIUS
 
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement that is used."""
-        return TEMP_CELSIUS
+    def __init__(self, config):
+        """Initialize a Homematic thermostat."""
+        super().__init__(config)
+        self._attr_hvac_modes = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
+        if "AUTO_MODE" in self._hmdevice.ACTIONNODE:
+            self._attr_hvac_modes = [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_OFF]
+        self._attr_preset_modes = []
+        for mode in self._hmdevice.ACTIONNODE:
+            if mode in HM_PRESET_MAP:
+                self._attr_preset_modes.append(HM_PRESET_MAP[mode])
 
     @property
     def hvac_mode(self):
@@ -77,16 +84,6 @@ class HMThermostat(HMDevice, ClimateEntity):
         return HVAC_MODE_HEAT
 
     @property
-    def hvac_modes(self):
-        """Return the list of available hvac operation modes.
-
-        Need to be a subset of HVAC_MODES.
-        """
-        if "AUTO_MODE" in self._hmdevice.ACTIONNODE:
-            return [HVAC_MODE_AUTO, HVAC_MODE_HEAT, HVAC_MODE_OFF]
-        return [HVAC_MODE_HEAT, HVAC_MODE_OFF]
-
-    @property
     def preset_mode(self):
         """Return the current preset mode, e.g., home, away, temp."""
         if self._data.get("BOOST_MODE", False):
@@ -102,15 +99,6 @@ class HMThermostat(HMDevice, ClimateEntity):
         if mode not in (HVAC_MODE_AUTO, HVAC_MODE_HEAT):
             return PRESET_NONE
         return mode
-
-    @property
-    def preset_modes(self):
-        """Return a list of available preset modes."""
-        preset_modes = []
-        for mode in self._hmdevice.ACTIONNODE:
-            if mode in HM_PRESET_MAP:
-                preset_modes.append(HM_PRESET_MAP[mode])
-        return preset_modes
 
     @property
     def current_humidity(self):
@@ -129,7 +117,7 @@ class HMThermostat(HMDevice, ClimateEntity):
     @property
     def target_temperature(self):
         """Return the target temperature."""
-        return self._data.get(self._state)
+        return self._data.get(self.state)
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -137,7 +125,7 @@ class HMThermostat(HMDevice, ClimateEntity):
         if temperature is None:
             return None
 
-        self._hmdevice.writeNodeData(self._state, float(temperature))
+        self._hmdevice.writeNodeData(self.state, float(temperature))
 
     def set_hvac_mode(self, hvac_mode):
         """Set new target hvac mode."""
@@ -158,21 +146,6 @@ class HMThermostat(HMDevice, ClimateEntity):
             self._hmdevice.MODE = self._hmdevice.LOWERING_MODE
 
     @property
-    def min_temp(self):
-        """Return the minimum temperature."""
-        return 4.5
-
-    @property
-    def max_temp(self):
-        """Return the maximum temperature."""
-        return 30.5
-
-    @property
-    def target_temperature_step(self):
-        """Return the supported step of target temperature."""
-        return 0.5
-
-    @property
     def _hm_control_mode(self):
         """Return Control mode."""
         if HMIP_CONTROL_MODE in self._data:
@@ -183,8 +156,8 @@ class HMThermostat(HMDevice, ClimateEntity):
 
     def _init_data_struct(self):
         """Generate a data dict (self._data) from the Homematic metadata."""
-        self._state = next(iter(self._hmdevice.WRITENODE.keys()))
-        self._data[self._state] = None
+        self._attr_state = next(iter(self._hmdevice.WRITENODE.keys()))
+        self._data[self.state] = None
 
         if (
             HM_CONTROL_MODE in self._hmdevice.ATTRIBUTENODE

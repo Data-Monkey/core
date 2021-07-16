@@ -20,6 +20,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HMLock(HMDevice, LockEntity):
     """Representation of a Homematic lock aka KeyMatic."""
 
+    _attr_supported_features = SUPPORT_OPEN
+
     @property
     def is_locked(self):
         """Return true if the lock is locked."""
@@ -39,10 +41,5 @@ class HMLock(HMDevice, LockEntity):
 
     def _init_data_struct(self):
         """Generate the data dictionary (self._data) from metadata."""
-        self._state = "STATE"
-        self._data.update({self._state: None})
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_OPEN
+        self._attr_state = "STATE"
+        self._data.update({self.state: None})

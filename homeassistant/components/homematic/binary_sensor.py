@@ -60,15 +60,15 @@ class HMBinarySensor(HMDevice, BinarySensorEntity):
     def device_class(self):
         """Return the class of this sensor from DEVICE_CLASSES."""
         # If state is MOTION (Only RemoteMotion working)
-        if self._state == "MOTION":
+        if self.state == "MOTION":
             return DEVICE_CLASS_MOTION
         return SENSOR_TYPES_CLASS.get(self._hmdevice.__class__.__name__)
 
     def _init_data_struct(self):
         """Generate the data dictionary (self._data) from metadata."""
         # Add state to data struct
-        if self._state:
-            self._data.update({self._state: None})
+        if self.state:
+            self._data.update({self.state: None})
 
 
 class HMBatterySensor(HMDevice, BinarySensorEntity):
@@ -84,5 +84,5 @@ class HMBatterySensor(HMDevice, BinarySensorEntity):
     def _init_data_struct(self):
         """Generate the data dictionary (self._data) from metadata."""
         # Add state to data struct
-        if self._state:
-            self._data.update({self._state: None})
+        if self.state:
+            self._data.update({self.state: None})

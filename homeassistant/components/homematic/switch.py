@@ -50,8 +50,8 @@ class HMSwitch(HMDevice, SwitchEntity):
 
     def _init_data_struct(self):
         """Generate the data dictionary (self._data) from metadata."""
-        self._state = "STATE"
-        self._data.update({self._state: None})
+        self._attr_state = "STATE"
+        self._data.update({self.state: None})
 
         # Need sensor values for SwitchPowermeter
         for node in self._hmdevice.SENSORNODE:

@@ -69,8 +69,8 @@ class HMCover(HMDevice, CoverEntity):
 
     def _init_data_struct(self):
         """Generate a data dictionary (self._data) from metadata."""
-        self._state = "LEVEL"
-        self._data.update({self._state: None})
+        self._attr_state = "LEVEL"
+        self._data.update({self.state: None})
         if "LEVEL_2" in self._hmdevice.WRITENODE:
             self._data.update({"LEVEL_2": None})
 
@@ -131,5 +131,5 @@ class HMGarage(HMCover):
 
     def _init_data_struct(self):
         """Generate a data dictionary (self._data) from metadata."""
-        self._state = "DOOR_STATE"
-        self._data.update({self._state: None})
+        self._attr_state = "DOOR_STATE"
+        self._data.update({self.state: None})

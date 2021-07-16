@@ -35,11 +35,25 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HMLight(HMDevice, LightEntity):
     """Representation of a Homematic light."""
 
+    def __init__(self, config):
+        """Initialize a Homematic light."""
+        super().__init__(config)
+        self._attr_supported_features = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
+        if "COLOR" in self._hmdevice.WRITENODE:
+            self._attr_supported_features |= SUPPORT_COLOR
+        if "PROGRAM" in self._hmdevice.WRITENODE:
+            self._attr_supported_features |= SUPPORT_EFFECT
+        if hasattr(self._hmdevice, "get_color_temp"):
+            self._attr_supported_features |= SUPPORT_COLOR_TEMP
+        self._attr_effect_list = self._hmdevice.get_effect_list()
+        if not self.supported_features & SUPPORT_EFFECT:
+            self._attr_effect_list = None
+
     @property
     def brightness(self):
         """Return the brightness of this light between 0..255."""
         # Is dimmer?
-        if self._state == "LEVEL":
+        if self.state == "LEVEL":
             return int(self._hm_get_state() * 255)
         return None
 
@@ -50,19 +64,6 @@ class HMLight(HMDevice, LightEntity):
             return self._hm_get_state() > 0
         except TypeError:
             return False
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        features = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
-
-        if "COLOR" in self._hmdevice.WRITENODE:
-            features |= SUPPORT_COLOR
-        if "PROGRAM" in self._hmdevice.WRITENODE:
-            features |= SUPPORT_EFFECT
-        if hasattr(self._hmdevice, "get_color_temp"):
-            features |= SUPPORT_COLOR_TEMP
-        return features
 
     @property
     def hs_color(self):
@@ -81,13 +82,6 @@ class HMLight(HMDevice, LightEntity):
         return self.max_mireds - (self.max_mireds - self.min_mireds) * hm_color_temp
 
     @property
-    def effect_list(self):
-        """Return the list of supported effects."""
-        if not self.supported_features & SUPPORT_EFFECT:
-            return None
-        return self._hmdevice.get_effect_list()
-
-    @property
     def effect(self):
         """Return the current color change program of the light."""
         if not self.supported_features & SUPPORT_EFFECT:
@@ -99,7 +93,7 @@ class HMLight(HMDevice, LightEntity):
         if ATTR_TRANSITION in kwargs:
             self._hmdevice.setValue("RAMP_TIME", kwargs[ATTR_TRANSITION], self._channel)
 
-        if ATTR_BRIGHTNESS in kwargs and self._state == "LEVEL":
+        if ATTR_BRIGHTNESS in kwargs and self.state == "LEVEL":
             percent_bright = float(kwargs[ATTR_BRIGHTNESS]) / 255
             self._hmdevice.set_level(percent_bright, self._channel)
         elif (
@@ -133,8 +127,8 @@ class HMLight(HMDevice, LightEntity):
     def _init_data_struct(self):
         """Generate a data dict (self._data) from the Homematic metadata."""
         # Use LEVEL
-        self._state = "LEVEL"
-        self._data[self._state] = None
+        self._attr_state = "LEVEL"
+        self._data[self.state] = None
 
         if self.supported_features & SUPPORT_COLOR:
             self._data.update({"COLOR": None})

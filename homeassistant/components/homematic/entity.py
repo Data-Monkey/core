@@ -27,66 +27,30 @@ SCAN_INTERVAL_VARIABLES = timedelta(seconds=30)
 class HMDevice(Entity):
     """The HomeMatic device base object."""
 
+    _attr_should_poll = False
+
     def __init__(self, config):
         """Initialize a generic HomeMatic device."""
-        self._name = config.get(ATTR_NAME)
+        self._attr_name = config.get(ATTR_NAME)
+        self._attr_unique_id = config.get(ATTR_UNIQUE_ID).replace(" ", "_")
         self._address = config.get(ATTR_ADDRESS)
         self._interface = config.get(ATTR_INTERFACE)
         self._channel = config.get(ATTR_CHANNEL)
-        self._state = config.get(ATTR_PARAM)
-        self._unique_id = config.get(ATTR_UNIQUE_ID)
+        self._attr_state = config.get(ATTR_PARAM)
         self._data = {}
         self._homematic = None
         self._hmdevice = None
         self._connected = False
-        self._available = False
+        self._attr_available = False
         self._channel_map = set()
 
         # Set parameter to uppercase
-        if self._state:
-            self._state = self._state.upper()
+        if self.state:
+            self._attr_state = self.state.upper()
 
     async def async_added_to_hass(self):
         """Load data init callbacks."""
         self._subscribe_homematic_events()
-
-    @property
-    def unique_id(self):
-        """Return unique ID. HomeMatic entity IDs are unique by default."""
-        return self._unique_id.replace(" ", "_")
-
-    @property
-    def should_poll(self):
-        """Return false. HomeMatic states are pushed by the XML-RPC Server."""
-        return False
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def available(self):
-        """Return true if device is available."""
-        return self._available
-
-    @property
-    def extra_state_attributes(self):
-        """Return device specific state attributes."""
-        # Static attributes
-        attr = {
-            "id": self._hmdevice.ADDRESS,
-            "interface": self._interface,
-        }
-
-        # Generate a dictionary with attributes
-        for node, data in HM_ATTRIBUTE_SUPPORT.items():
-            # Is an attribute and exists for this object
-            if node in self._data:
-                value = data[1].get(self._data[node], self._data[node])
-                attr[data[0]] = value
-
-        return attr
 
     def update(self):
         """Connect to HomeMatic init values."""
@@ -104,10 +68,22 @@ class HMDevice(Entity):
             self._load_data_from_hm()
 
             # Link events from pyhomematic
-            self._available = not self._hmdevice.UNREACH
+            self._attr_available = not self._hmdevice.UNREACH
         except Exception as err:  # pylint: disable=broad-except
             self._connected = False
             _LOGGER.error("Exception while linking %s: %s", self._address, str(err))
+
+        self._attr_extra_state_attributes = {
+            "id": self._hmdevice.ADDRESS,
+            "interface": self._interface,
+        }
+
+        # Generate a dictionary with attributes
+        for node, data in HM_ATTRIBUTE_SUPPORT.items():
+            # Is an attribute and exists for this object
+            if node in self._data:
+                value = data[1].get(self._data[node], self._data[node])
+                self._attr_extra_state_attributes[data[0]] = value
 
     def _hm_event_callback(self, device, caller, attribute, value):
         """Handle all pyhomematic device events."""
@@ -120,7 +96,7 @@ class HMDevice(Entity):
 
         # Availability has changed
         if self.available != (not self._hmdevice.UNREACH):
-            self._available = not self._hmdevice.UNREACH
+            self._attr_available = not self._hmdevice.UNREACH
             has_changed = True
 
         # If it has changed data point, update Home Assistant
@@ -171,13 +147,13 @@ class HMDevice(Entity):
 
     def _hm_set_state(self, value):
         """Set data to main datapoint."""
-        if self._state in self._data:
-            self._data[self._state] = value
+        if self.state in self._data:
+            self._data[self.state] = value
 
     def _hm_get_state(self):
         """Get data from main datapoint."""
-        if self._state in self._data:
-            return self._data[self._state]
+        if self.state in self._data:
+            return self._data[self.state]
         return None
 
     def _init_data(self):
@@ -197,14 +173,16 @@ class HMDevice(Entity):
 class HMHub(Entity):
     """The HomeMatic hub. (CCU2/HomeGear)."""
 
+    _attr_icon = "mdi:gradient"
+    _attr_should_poll = False
+
     def __init__(self, hass, homematic, name):
         """Initialize HomeMatic hub."""
         self.hass = hass
         self.entity_id = f"{DOMAIN}.{name.lower()}"
         self._homematic = homematic
-        self._variables = {}
-        self._name = name
-        self._state = None
+        self._attr_extra_state_attributes = {}
+        self._attr_name = name
 
         # Load data
         self.hass.helpers.event.track_time_interval(self._update_hub, SCAN_INTERVAL_HUB)
@@ -215,69 +193,47 @@ class HMHub(Entity):
         )
         self.hass.add_job(self._update_variables, None)
 
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def should_poll(self):
-        """Return false. HomeMatic Hub object updates variables."""
-        return False
-
-    @property
-    def state(self):
-        """Return the state of the entity."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return self._variables.copy()
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return "mdi:gradient"
-
     def _update_hub(self, now):
         """Retrieve latest state."""
-        service_message = self._homematic.getServiceMessages(self._name)
+        service_message = self._homematic.getServiceMessages(self.name)
         state = None if service_message is None else len(service_message)
 
         # state have change?
-        if self._state != state:
-            self._state = state
+        if self.state != state:
+            self._attr_state = state
             self.schedule_update_ha_state()
 
     def _update_variables(self, now):
         """Retrieve all variable data and update hmvariable states."""
-        variables = self._homematic.getAllSystemVariables(self._name)
+        variables = self._homematic.getAllSystemVariables(self.name)
         if variables is None:
             return
 
         state_change = False
         for key, value in variables.items():
-            if key in self._variables and value == self._variables[key]:
+            if (
+                key in self.extra_state_attributes
+                and value == self.extra_state_attributes[key]
+            ):
                 continue
 
             state_change = True
-            self._variables.update({key: value})
+            self.extra_state_attributes.update({key: value})
 
         if state_change:
             self.schedule_update_ha_state()
 
     def hm_set_variable(self, name, value):
         """Set variable value on CCU/Homegear."""
-        if name not in self._variables:
+        if name not in self.extra_state_attributes:
             _LOGGER.error("Variable %s not found on %s", name, self.name)
             return
-        old_value = self._variables.get(name)
+        old_value = self.extra_state_attributes.get(name)
         if isinstance(old_value, bool):
             value = cv.boolean(value)
         else:
             value = float(value)
         self._homematic.setSystemVariable(self.name, name, value)
 
-        self._variables.update({name: value})
+        self.extra_state_attributes.update({name: value})
         self.schedule_update_ha_state()

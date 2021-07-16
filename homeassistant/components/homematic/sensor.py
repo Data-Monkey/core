@@ -105,6 +105,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HMSensor(HMDevice, SensorEntity):
     """Representation of a HomeMatic sensor."""
 
+    def __init__(self, config):
+        """Initialize a HomeMatic sensor."""
+        super().__init__(config)
+        self._attr_icon = HM_ICON_HA_CAST.get(self.state)
+        self._attr_device_class = HM_DEVICE_CLASS_HA_CAST.get(self.state)
+        self._attr_unit_of_measurement = HM_UNIT_HA_CAST.get(self.state)
+
     @property
     def state(self):
         """Return the state of the sensor."""
@@ -116,24 +123,9 @@ class HMSensor(HMDevice, SensorEntity):
         # No cast, return original value
         return self._hm_get_state()
 
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return HM_UNIT_HA_CAST.get(self._state)
-
-    @property
-    def device_class(self):
-        """Return the device class to use in the frontend, if any."""
-        return HM_DEVICE_CLASS_HA_CAST.get(self._state)
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return HM_ICON_HA_CAST.get(self._state)
-
     def _init_data_struct(self):
         """Generate a data dictionary (self._data) from metadata."""
-        if self._state:
-            self._data.update({self._state: None})
+        if self.state:
+            self._data.update({self.state: None})
         else:
-            _LOGGER.critical("Unable to initialize sensor: %s", self._name)
+            _LOGGER.critical("Unable to initialize sensor: %s", self.name)
