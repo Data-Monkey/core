@@ -66,24 +66,18 @@ async def async_setup_entry(
 class HomematicipWeatherSensor(HomematicipGenericEntity, WeatherEntity):
     """Representation of the HomematicIP weather sensor plus & basic."""
 
+    _attr_attribution = "Powered by Homematic IP"
+    _attr_temperature_unit = TEMP_CELSIUS
+
     def __init__(self, hap: HomematicipHAP, device) -> None:
         """Initialize the weather sensor."""
         super().__init__(hap, device)
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._device.label
+        self._attr_name = device.label
 
     @property
     def temperature(self) -> float:
         """Return the platform temperature."""
         return self._device.actualTemperature
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
 
     @property
     def humidity(self) -> int:
@@ -94,11 +88,6 @@ class HomematicipWeatherSensor(HomematicipGenericEntity, WeatherEntity):
     def wind_speed(self) -> float:
         """Return the wind speed."""
         return self._device.windSpeed
-
-    @property
-    def attribution(self) -> str:
-        """Return the attribution."""
-        return "Powered by Homematic IP"
 
     @property
     def condition(self) -> str:
@@ -124,10 +113,14 @@ class HomematicipWeatherSensorPro(HomematicipWeatherSensor):
 class HomematicipHomeWeather(HomematicipGenericEntity, WeatherEntity):
     """Representation of the HomematicIP home weather."""
 
+    _attr_attribution = "Powered by Homematic IP"
+    _attr_temperature_unit = TEMP_CELSIUS
+
     def __init__(self, hap: HomematicipHAP) -> None:
         """Initialize the home weather."""
-        hap.home.modelType = "HmIP-Home-Weather"
         super().__init__(hap, hap.home)
+        hap.home.modelType = "HmIP-Home-Weather"
+        self._attr_name = f"Weather {hap.home.location.city}"
 
     @property
     def available(self) -> bool:
@@ -135,19 +128,9 @@ class HomematicipHomeWeather(HomematicipGenericEntity, WeatherEntity):
         return self._home.connected
 
     @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return f"Weather {self._home.location.city}"
-
-    @property
     def temperature(self) -> float:
         """Return the temperature."""
         return self._device.weather.temperature
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
 
     @property
     def humidity(self) -> int:
@@ -163,11 +146,6 @@ class HomematicipHomeWeather(HomematicipGenericEntity, WeatherEntity):
     def wind_bearing(self) -> float:
         """Return the wind bearing."""
         return self._device.weather.windDirection
-
-    @property
-    def attribution(self) -> str:
-        """Return the attribution."""
-        return "Powered by Homematic IP"
 
     @property
     def condition(self) -> str:

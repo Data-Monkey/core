@@ -27,7 +27,6 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 
 from . import DOMAIN as HMIPC_DOMAIN, HomematicipGenericEntity
 from .hap import HomematicipHAP
@@ -65,6 +64,9 @@ class HomematicipHeatingGroup(HomematicipGenericEntity, ClimateEntity):
     Cool mode is only available for floor heating systems, if basically enabled in the hmip app.
     """
 
+    _attr_supported_features = SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
+    _attr_temperature_unit = TEMP_CELSIUS
+
     def __init__(self, hap: HomematicipHAP, device: AsyncHeatingGroup) -> None:
         """Initialize heating group."""
         device.modelType = "HmIP-Heating-Group"
@@ -72,27 +74,15 @@ class HomematicipHeatingGroup(HomematicipGenericEntity, ClimateEntity):
         self._simple_heating = None
         if device.actualTemperature is None:
             self._simple_heating = self._first_radiator_thermostat
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device specific attributes."""
-        return {
-            "identifiers": {(HMIPC_DOMAIN, self._device.id)},
-            "name": self._device.label,
+        self._attr_min_temp = device.minTemperature
+        self._attr_max_temp = device.maxTemperature
+        self._attr_device_info = {
+            "identifiers": {(HMIPC_DOMAIN, device.id)},
+            "name": device.label,
             "manufacturer": "eQ-3",
-            "model": self._device.modelType,
-            "via_device": (HMIPC_DOMAIN, self._device.homeId),
+            "model": device.modelType,
+            "via_device": (HMIPC_DOMAIN, device.homeId),
         }
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_PRESET_MODE | SUPPORT_TARGET_TEMPERATURE
 
     @property
     def target_temperature(self) -> float:
@@ -194,16 +184,6 @@ class HomematicipHeatingGroup(HomematicipGenericEntity, ClimateEntity):
         presets.extend(profile_names)
 
         return presets
-
-    @property
-    def min_temp(self) -> float:
-        """Return the minimum temperature."""
-        return self._device.minTemperature
-
-    @property
-    def max_temp(self) -> float:
-        """Return the maximum temperature."""
-        return self._device.maxTemperature
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""

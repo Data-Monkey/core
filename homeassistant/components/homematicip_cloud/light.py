@@ -108,6 +108,8 @@ class HomematicipLightMeasuring(HomematicipLight):
 class HomematicipMultiDimmer(HomematicipGenericEntity, LightEntity):
     """Representation of HomematicIP Cloud dimmer."""
 
+    _attr_supported_features = SUPPORT_BRIGHTNESS
+
     def __init__(
         self,
         hap: HomematicipHAP,
@@ -133,11 +135,6 @@ class HomematicipMultiDimmer(HomematicipGenericEntity, LightEntity):
             (self._device.functionalChannels[self._channel].dimLevel or 0.0) * 255
         )
 
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS
-
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the dimmer on."""
         if ATTR_BRIGHTNESS in kwargs:
@@ -162,6 +159,8 @@ class HomematicipDimmer(HomematicipMultiDimmer, LightEntity):
 
 class HomematicipNotificationLight(HomematicipGenericEntity, LightEntity):
     """Representation of HomematicIP Cloud notification light."""
+
+    _attr_supported_features = SUPPORT_BRIGHTNESS | SUPPORT_COLOR | SUPPORT_TRANSITION
 
     def __init__(self, hap: HomematicipHAP, device, channel: int) -> None:
         """Initialize the notification light entity."""
@@ -216,11 +215,6 @@ class HomematicipNotificationLight(HomematicipGenericEntity, LightEntity):
             state_attr[ATTR_COLOR_NAME] = self._func_channel.simpleRGBColorState
 
         return state_attr
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_COLOR | SUPPORT_TRANSITION
 
     @property
     def unique_id(self) -> str:

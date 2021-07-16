@@ -18,7 +18,6 @@ from homeassistant.const import (
     STATE_ALARM_TRIGGERED,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
 
 from . import DOMAIN as HMIPC_DOMAIN
 from .hap import HomematicipHAP
@@ -39,21 +38,25 @@ async def async_setup_entry(
 class HomematicipAlarmControlPanelEntity(AlarmControlPanelEntity):
     """Representation of the HomematicIP alarm control panel."""
 
+    _attr_should_poll = False
+    _attr_supported_features = SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY
+
     def __init__(self, hap: HomematicipHAP) -> None:
         """Initialize the alarm control panel."""
         self._home = hap.home
-        _LOGGER.info("Setting up %s", self.name)
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device specific attributes."""
-        return {
-            "identifiers": {(HMIPC_DOMAIN, f"ACP {self._home.id}")},
+        name = CONST_ALARM_CONTROL_PANEL_NAME
+        if hap.home.name:
+            name = f"{hap.home.name} {name}"
+        self._attr_name = name
+        self._attr_unique_id = f"{self.__class__.__name__}_{hap.home.id}"
+        self._attr_device_info = {
+            "identifiers": {(HMIPC_DOMAIN, f"ACP {hap.home.id}")},
             "name": self.name,
             "manufacturer": "eQ-3",
             "model": CONST_ALARM_CONTROL_PANEL_NAME,
-            "via_device": (HMIPC_DOMAIN, self._home.id),
+            "via_device": (HMIPC_DOMAIN, hap.home.id),
         }
+        _LOGGER.info("Setting up %s", self.name)
 
     @property
     def state(self) -> str:
@@ -75,11 +78,6 @@ class HomematicipAlarmControlPanelEntity(AlarmControlPanelEntity):
     @property
     def _security_and_alarm(self) -> SecurityAndAlarmHome:
         return self._home.get_functionalHome(SecurityAndAlarmHome)
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY
 
     async def async_alarm_disarm(self, code=None) -> None:
         """Send disarm command."""
@@ -111,24 +109,6 @@ class HomematicipAlarmControlPanelEntity(AlarmControlPanelEntity):
             )
 
     @property
-    def name(self) -> str:
-        """Return the name of the generic entity."""
-        name = CONST_ALARM_CONTROL_PANEL_NAME
-        if self._home.name:
-            name = f"{self._home.name} {name}"
-        return name
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed."""
-        return False
-
-    @property
     def available(self) -> bool:
         """Return if alarm control panel is available."""
         return self._home.connected
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return f"{self.__class__.__name__}_{self._home.id}"

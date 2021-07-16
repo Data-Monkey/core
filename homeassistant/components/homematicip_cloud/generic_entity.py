@@ -10,7 +10,7 @@ from homematicip.aio.group import AsyncGroup
 from homeassistant.const import ATTR_ID
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-from homeassistant.helpers.entity import DeviceInfo, Entity
+from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN as HMIPC_DOMAIN
 from .hap import HomematicipHAP
@@ -72,6 +72,8 @@ GROUP_ATTRIBUTES = {
 class HomematicipGenericEntity(Entity):
     """Representation of the HomematicIP generic entity."""
 
+    _attr_should_poll = False
+
     def __init__(
         self,
         hap: HomematicipHAP,
@@ -89,26 +91,47 @@ class HomematicipGenericEntity(Entity):
         self._is_multi_channel = is_multi_channel
         # Marker showing that the HmIP device hase been removed.
         self.hmip_device_removed = False
-        _LOGGER.info("Setting up %s (%s)", self.name, self._device.modelType)
+        name = None
+        # Try to get a label from a channel.
+        if hasattr(self._device, "functionalChannels"):
+            if self._is_multi_channel:
+                name = self._device.functionalChannels[self._channel].label
+            else:
+                if len(self._device.functionalChannels) > 1:
+                    name = self._device.functionalChannels[1].label
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device specific attributes."""
-        # Only physical devices should be HA devices.
-        if isinstance(self._device, AsyncDevice):
-            return {
+        # Use device label, if name is not defined by channel label.
+        if not name:
+            name = self._device.label
+            if self._post:
+                name = f"{name} {self._post}"
+            elif self._is_multi_channel:
+                name = f"{name} Channel{self._channel}"
+
+        # Add a prefix to the name if the homematic ip home has a name.
+        if name and self._home.name:
+            name = f"{self._home.name} {name}"
+
+        self._attr_name = name
+        self._attr_unique_id = f"{self.__class__.__name__}_{device.id}"
+        if self._is_multi_channel:
+            self._attr_unique_id = (
+                f"{self.__class__.__name__}_Channel{channel}_{device.id}"
+            )
+        if isinstance(device, AsyncDevice):
+            self._attr_device_info = {
                 "identifiers": {
                     # Serial numbers of Homematic IP device
-                    (HMIPC_DOMAIN, self._device.id)
+                    (HMIPC_DOMAIN, device.id)
                 },
-                "name": self._device.label,
-                "manufacturer": self._device.oem,
-                "model": self._device.modelType,
-                "sw_version": self._device.firmwareVersion,
+                "name": device.label,
+                "manufacturer": device.oem,
+                "model": device.modelType,
+                "sw_version": device.firmwareVersion,
                 # Link to the homematic ip access point.
-                "via_device": (HMIPC_DOMAIN, self._device.homeId),
+                "via_device": (HMIPC_DOMAIN, device.homeId),
             }
-        return None
+        _LOGGER.info("Setting up %s (%s)", self.name, device.modelType)
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
@@ -177,52 +200,9 @@ class HomematicipGenericEntity(Entity):
         self.hass.async_create_task(self.async_remove(force_remove=True))
 
     @property
-    def name(self) -> str:
-        """Return the name of the generic entity."""
-
-        name = None
-        # Try to get a label from a channel.
-        if hasattr(self._device, "functionalChannels"):
-            if self._is_multi_channel:
-                name = self._device.functionalChannels[self._channel].label
-            else:
-                if len(self._device.functionalChannels) > 1:
-                    name = self._device.functionalChannels[1].label
-
-        # Use device label, if name is not defined by channel label.
-        if not name:
-            name = self._device.label
-            if self._post:
-                name = f"{name} {self._post}"
-            elif self._is_multi_channel:
-                name = f"{name} Channel{self._channel}"
-
-        # Add a prefix to the name if the homematic ip home has a name.
-        if name and self._home.name:
-            name = f"{self._home.name} {name}"
-
-        return name
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed."""
-        return False
-
-    @property
     def available(self) -> bool:
         """Return if entity is available."""
         return not self._device.unreach
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        unique_id = f"{self.__class__.__name__}_{self._device.id}"
-        if self._is_multi_channel:
-            unique_id = (
-                f"{self.__class__.__name__}_Channel{self._channel}_{self._device.id}"
-            )
-
-        return unique_id
 
     @property
     def icon(self) -> str | None:
