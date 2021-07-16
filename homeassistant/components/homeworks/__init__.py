@@ -15,6 +15,7 @@ from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.discovery import load_platform
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, dispatcher_send
+from homeassistant.helpers.entity import Entity
 from homeassistant.util import slugify
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,29 +94,17 @@ def setup(hass, base_config):
     return True
 
 
-class HomeworksDevice:
+class HomeworksDevice(Entity):
     """Base class of a Homeworks device."""
+
+    _attr_should_poll = False
 
     def __init__(self, controller, addr, name):
         """Initialize Homeworks device."""
         self._addr = addr
-        self._name = name
+        self._attr_name = name
         self._controller = controller
-
-    @property
-    def unique_id(self):
-        """Return a unique identifier."""
-        return f"homeworks.{self._addr}"
-
-    @property
-    def name(self):
-        """Device name."""
-        return self._name
-
-    @property
-    def should_poll(self):
-        """No need to poll."""
-        return False
+        self._attr_unique_id = f"homeworks.{addr}"
 
 
 class HomeworksKeypadEvent:
@@ -128,11 +117,10 @@ class HomeworksKeypadEvent:
     def __init__(self, hass, addr, name):
         """Register callback that will be used for signals."""
         self._hass = hass
-        self._addr = addr
         self._name = name
-        self._id = slugify(self._name)
-        signal = f"homeworks_entity_{self._addr}"
-        async_dispatcher_connect(self._hass, signal, self._update_callback)
+        self._id = slugify(name)
+        signal = f"homeworks_entity_{addr}"
+        async_dispatcher_connect(hass, signal, self._update_callback)
 
     @callback
     def _update_callback(self, msg_type, values):

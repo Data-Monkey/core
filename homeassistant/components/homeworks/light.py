@@ -35,11 +35,13 @@ def setup_platform(hass, config, add_entities, discover_info=None):
 class HomeworksLight(HomeworksDevice, LightEntity):
     """Homeworks Light."""
 
+    _attr_supported_features = SUPPORT_BRIGHTNESS
+
     def __init__(self, controller, addr, name, rate):
         """Create device with Addr, name, and rate."""
         super().__init__(controller, addr, name)
         self._rate = rate
-        self._level = 0
+        self._attr_brightness = 0
         self._prev_level = 0
 
     async def async_added_to_hass(self):
@@ -50,11 +52,6 @@ class HomeworksLight(HomeworksDevice, LightEntity):
             async_dispatcher_connect(self.hass, signal, self._update_callback)
         )
         self._controller.request_dimmer_level(self._addr)
-
-    @property
-    def supported_features(self):
-        """Supported features."""
-        return SUPPORT_BRIGHTNESS
 
     def turn_on(self, **kwargs):
         """Turn on the light."""
@@ -70,33 +67,20 @@ class HomeworksLight(HomeworksDevice, LightEntity):
         """Turn off the light."""
         self._set_brightness(0)
 
-    @property
-    def brightness(self):
-        """Control the brightness."""
-        return self._level
-
     def _set_brightness(self, level):
         """Send the brightness level to the device."""
         self._controller.fade_dim(
             float((level * 100.0) / 255.0), self._rate, 0, self._addr
         )
 
-    @property
-    def extra_state_attributes(self):
-        """Supported attributes."""
-        return {"homeworks_address": self._addr}
-
-    @property
-    def is_on(self):
-        """Is the light on/off."""
-        return self._level != 0
-
     @callback
     def _update_callback(self, msg_type, values):
         """Process device specific messages."""
 
         if msg_type == HW_LIGHT_CHANGED:
-            self._level = int((values[1] * 255.0) / 100.0)
-            if self._level != 0:
-                self._prev_level = self._level
+            self._attr_brightness = int((values[1] * 255.0) / 100.0)
+            if self.brightness != 0:
+                self._prev_level = self.brightness
+            self._attr_is_on = self.brightness != 0
+            self._attr_extra_state_attributes = {"homeworks_address": self._addr}
             self.async_write_ha_state()
