@@ -106,6 +106,20 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class HomeKitHeaterCoolerEntity(HomeKitEntity, ClimateEntity):
     """Representation of a Homekit climate device."""
 
+    _attr_temperature_unit = TEMP_CELSIUS
+
+    def __init__(self, accessory, devinfo):
+        """Initialize a Homekit climate device."""
+        super().__init__(accessory, devinfo)
+        features = 0
+        if self.service.has(CharacteristicsTypes.TEMPERATURE_COOLING_THRESHOLD):
+            features |= SUPPORT_TARGET_TEMPERATURE
+        if self.service.has(CharacteristicsTypes.TEMPERATURE_HEATING_THRESHOLD):
+            features |= SUPPORT_TARGET_TEMPERATURE
+        if self.service.has(CharacteristicsTypes.SWING_MODE):
+            features |= SUPPORT_SWING_MODE
+        self._attr_supported_features = features
+
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
         return [
@@ -303,30 +317,24 @@ class HomeKitHeaterCoolerEntity(HomeKitEntity, ClimateEntity):
             {CharacteristicsTypes.SWING_MODE: SWING_MODE_HASS_TO_HOMEKIT[swing_mode]}
         )
 
-    @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        features = 0
-
-        if self.service.has(CharacteristicsTypes.TEMPERATURE_COOLING_THRESHOLD):
-            features |= SUPPORT_TARGET_TEMPERATURE
-
-        if self.service.has(CharacteristicsTypes.TEMPERATURE_HEATING_THRESHOLD):
-            features |= SUPPORT_TARGET_TEMPERATURE
-
-        if self.service.has(CharacteristicsTypes.SWING_MODE):
-            features |= SUPPORT_SWING_MODE
-
-        return features
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
 
 class HomeKitClimateEntity(HomeKitEntity, ClimateEntity):
     """Representation of a Homekit climate device."""
+
+    _attr_temperature_unit = TEMP_CELSIUS
+
+    def __init__(self, accessory, devinfo):
+        """Initialize a Homekit climate device."""
+        super().__init__(accessory, devinfo)
+        self._attr_supported_features = 0
+        if self.service.has(CharacteristicsTypes.TEMPERATURE_TARGET):
+            self._attr_supported_features |= SUPPORT_TARGET_TEMPERATURE
+        if self.service.has(
+            CharacteristicsTypes.TEMPERATURE_COOLING_THRESHOLD
+        ) and self.service.has(CharacteristicsTypes.TEMPERATURE_HEATING_THRESHOLD):
+            self._attr_supported_features |= SUPPORT_TARGET_TEMPERATURE_RANGE
+        if self.service.has(CharacteristicsTypes.RELATIVE_HUMIDITY_TARGET):
+            self._attr_supported_features |= SUPPORT_TARGET_HUMIDITY
 
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
@@ -524,29 +532,6 @@ class HomeKitClimateEntity(HomeKitEntity, ClimateEntity):
             self.service[CharacteristicsTypes.HEATING_COOLING_TARGET],
         )
         return [MODE_HOMEKIT_TO_HASS[mode] for mode in valid_values]
-
-    @property
-    def supported_features(self):
-        """Return the list of supported features."""
-        features = 0
-
-        if self.service.has(CharacteristicsTypes.TEMPERATURE_TARGET):
-            features |= SUPPORT_TARGET_TEMPERATURE
-
-        if self.service.has(
-            CharacteristicsTypes.TEMPERATURE_COOLING_THRESHOLD
-        ) and self.service.has(CharacteristicsTypes.TEMPERATURE_HEATING_THRESHOLD):
-            features |= SUPPORT_TARGET_TEMPERATURE_RANGE
-
-        if self.service.has(CharacteristicsTypes.RELATIVE_HUMIDITY_TARGET):
-            features |= SUPPORT_TARGET_HUMIDITY
-
-        return features
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
 
 
 ENTITY_TYPES = {

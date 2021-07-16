@@ -49,6 +49,8 @@ class HomeKitSwitch(HomeKitEntity, SwitchEntity):
 class HomeKitValve(HomeKitEntity, SwitchEntity):
     """Represents a valve in an irrigation system."""
 
+    _attr_icon = "mdi:water"
+
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
         return [
@@ -65,11 +67,6 @@ class HomeKitValve(HomeKitEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs):
         """Turn the specified valve off."""
         await self.async_put_characteristics({CharacteristicsTypes.ACTIVE: False})
-
-    @property
-    def icon(self) -> str:
-        """Return the icon."""
-        return "mdi:water"
 
     @property
     def is_on(self):

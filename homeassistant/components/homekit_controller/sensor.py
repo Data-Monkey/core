@@ -54,6 +54,7 @@ class HomeKitHumiditySensor(HomeKitEntity, SensorEntity):
     """Representation of a Homekit humidity sensor."""
 
     _attr_device_class = DEVICE_CLASS_HUMIDITY
+    _attr_icon = HUMIDITY_ICON
     _attr_unit_of_measurement = PERCENTAGE
 
     def get_characteristic_types(self):
@@ -66,11 +67,6 @@ class HomeKitHumiditySensor(HomeKitEntity, SensorEntity):
         return f"{super().name} Humidity"
 
     @property
-    def icon(self):
-        """Return the sensor icon."""
-        return HUMIDITY_ICON
-
-    @property
     def state(self):
         """Return the current humidity."""
         return self.service.value(CharacteristicsTypes.RELATIVE_HUMIDITY_CURRENT)
@@ -80,6 +76,7 @@ class HomeKitTemperatureSensor(HomeKitEntity, SensorEntity):
     """Representation of a Homekit temperature sensor."""
 
     _attr_device_class = DEVICE_CLASS_TEMPERATURE
+    _attr_icon = TEMP_C_ICON
     _attr_unit_of_measurement = TEMP_CELSIUS
 
     def get_characteristic_types(self):
@@ -92,11 +89,6 @@ class HomeKitTemperatureSensor(HomeKitEntity, SensorEntity):
         return f"{super().name} Temperature"
 
     @property
-    def icon(self):
-        """Return the sensor icon."""
-        return TEMP_C_ICON
-
-    @property
     def state(self):
         """Return the current temperature in Celsius."""
         return self.service.value(CharacteristicsTypes.TEMPERATURE_CURRENT)
@@ -106,6 +98,7 @@ class HomeKitLightSensor(HomeKitEntity, SensorEntity):
     """Representation of a Homekit light level sensor."""
 
     _attr_device_class = DEVICE_CLASS_ILLUMINANCE
+    _attr_icon = BRIGHTNESS_ICON
     _attr_unit_of_measurement = LIGHT_LUX
 
     def get_characteristic_types(self):
@@ -116,11 +109,6 @@ class HomeKitLightSensor(HomeKitEntity, SensorEntity):
     def name(self):
         """Return the name of the device."""
         return f"{super().name} Light Level"
-
-    @property
-    def icon(self):
-        """Return the sensor icon."""
-        return BRIGHTNESS_ICON
 
     @property
     def state(self):
@@ -233,10 +221,10 @@ class SimpleSensor(CharacteristicEntity, SensorEntity):
         **kwargs,
     ):
         """Initialise a secondary HomeKit characteristic sensor."""
-        self._device_class = device_class
-        self._state_class = state_class
-        self._unit = unit
-        self._icon = icon
+        self._attr_device_class = device_class
+        self._attr_state_class = state_class
+        self._attr_unit_of_measurement = unit
+        self._attr_icon = icon
         self._name = name
         self._char = char
 
@@ -245,26 +233,6 @@ class SimpleSensor(CharacteristicEntity, SensorEntity):
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity is tracking."""
         return [self._char.type]
-
-    @property
-    def device_class(self):
-        """Return type of sensor."""
-        return self._device_class
-
-    @property
-    def state_class(self):
-        """Return type of state."""
-        return self._state_class
-
-    @property
-    def unit_of_measurement(self):
-        """Return units for the sensor."""
-        return self._unit
-
-    @property
-    def icon(self):
-        """Return the sensor icon."""
-        return self._icon
 
     @property
     def name(self) -> str:

@@ -59,6 +59,25 @@ class HomeKitTelevision(HomeKitEntity, MediaPlayerEntity):
 
     _attr_device_class = DEVICE_CLASS_TV
 
+    def __init__(self, accessory, devinfo):
+        """Initialize a HomeKit Controller Television."""
+        super().__init__(accessory, devinfo)
+        self._attr_supported_features = 0
+        if self.service.has(CharacteristicsTypes.ACTIVE_IDENTIFIER):
+            self._attr_supported_features |= SUPPORT_SELECT_SOURCE
+        if self.service.has(CharacteristicsTypes.TARGET_MEDIA_STATE):
+            if TargetMediaStateValues.PAUSE in self.supported_media_states:
+                self._attr_supported_features |= SUPPORT_PAUSE
+            if TargetMediaStateValues.PLAY in self.supported_media_states:
+                self._attr_supported_features |= SUPPORT_PLAY
+            if TargetMediaStateValues.STOP in self.supported_media_states:
+                self._attr_supported_features |= SUPPORT_STOP
+        if (
+            self.service.has(CharacteristicsTypes.REMOTE_KEY)
+            and RemoteKeyValues.PLAY_PAUSE in self.supported_remote_keys
+        ):
+            self._attr_supported_features |= SUPPORT_PAUSE | SUPPORT_PLAY
+
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
         return [
@@ -71,32 +90,6 @@ class HomeKitTelevision(HomeKitEntity, MediaPlayerEntity):
             CharacteristicsTypes.CONFIGURED_NAME,
             CharacteristicsTypes.IDENTIFIER,
         ]
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        features = 0
-
-        if self.service.has(CharacteristicsTypes.ACTIVE_IDENTIFIER):
-            features |= SUPPORT_SELECT_SOURCE
-
-        if self.service.has(CharacteristicsTypes.TARGET_MEDIA_STATE):
-            if TargetMediaStateValues.PAUSE in self.supported_media_states:
-                features |= SUPPORT_PAUSE
-
-            if TargetMediaStateValues.PLAY in self.supported_media_states:
-                features |= SUPPORT_PLAY
-
-            if TargetMediaStateValues.STOP in self.supported_media_states:
-                features |= SUPPORT_STOP
-
-        if (
-            self.service.has(CharacteristicsTypes.REMOTE_KEY)
-            and RemoteKeyValues.PLAY_PAUSE in self.supported_remote_keys
-        ):
-            features |= SUPPORT_PAUSE | SUPPORT_PLAY
-
-        return features
 
     @property
     def supported_media_states(self):

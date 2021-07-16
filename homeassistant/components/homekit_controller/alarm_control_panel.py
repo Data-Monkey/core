@@ -57,6 +57,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class HomeKitAlarmControlPanelEntity(HomeKitEntity, AlarmControlPanelEntity):
     """Representation of a Homekit Alarm Control Panel."""
 
+    _attr_icon = ICON
+    _attr_supported_features = (
+        SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_ARM_NIGHT
+    )
+
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
         return [
@@ -66,21 +71,11 @@ class HomeKitAlarmControlPanelEntity(HomeKitEntity, AlarmControlPanelEntity):
         ]
 
     @property
-    def icon(self):
-        """Return icon."""
-        return ICON
-
-    @property
     def state(self):
         """Return the state of the device."""
         return CURRENT_STATE_MAP[
             self.service.value(CharacteristicsTypes.SECURITY_SYSTEM_STATE_CURRENT)
         ]
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_ARM_NIGHT
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""

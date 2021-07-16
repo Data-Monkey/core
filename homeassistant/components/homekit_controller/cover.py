@@ -54,10 +54,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class HomeKitGarageDoorCover(HomeKitEntity, CoverEntity):
     """Representation of a HomeKit Garage Door."""
 
-    @property
-    def device_class(self):
-        """Define this cover as a garage door."""
-        return "garage"
+    _attr_device_class = "garage"
+    _attr_supported_features = SUPPORT_OPEN | SUPPORT_CLOSE
 
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
@@ -66,11 +64,6 @@ class HomeKitGarageDoorCover(HomeKitEntity, CoverEntity):
             CharacteristicsTypes.DOOR_STATE_TARGET,
             CharacteristicsTypes.OBSTRUCTION_DETECTED,
         ]
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE
 
     @property
     def state(self):

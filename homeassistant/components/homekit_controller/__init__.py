@@ -36,6 +36,7 @@ class HomeKitEntity(Entity):
 
     def __init__(self, accessory, devinfo):
         """Initialise a generic HomeKit device."""
+        super().__init__()
         self._accessory = accessory
         self._aid = devinfo["aid"]
         self._iid = devinfo["iid"]
@@ -43,8 +44,29 @@ class HomeKitEntity(Entity):
         self.setup()
 
         self._signals = []
+        serial = self.accessory_info.value(CharacteristicsTypes.SERIAL_NUMBER)
+        self._attr_unique_id = f"homekit-{serial}-{devinfo['iid']}"
+        self._attr_name = self.accessory_info.value(CharacteristicsTypes.NAME)
+        info = self.accessory_info
+        accessory_serial = info.value(CharacteristicsTypes.SERIAL_NUMBER)
 
-        super().__init__()
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, "serial-number", accessory_serial)},
+            "name": info.value(CharacteristicsTypes.NAME),
+            "manufacturer": info.value(CharacteristicsTypes.MANUFACTURER, ""),
+            "model": info.value(CharacteristicsTypes.MODEL, ""),
+            "sw_version": info.value(CharacteristicsTypes.FIRMWARE_REVISION, ""),
+        }
+
+        # Some devices only have a single accessory - we don't add a
+        # via_device otherwise it would be self referential.
+        bridge_serial = self._accessory.connection_info["serial-number"]
+        if accessory_serial != bridge_serial:
+            self._attr_device_info["via_device"] = (
+                DOMAIN,
+                "serial-number",
+                bridge_serial,
+            )
 
     @property
     def accessory(self) -> Accessory:
@@ -129,42 +151,9 @@ class HomeKitEntity(Entity):
             self.watchable_characteristics.append((self._aid, char.iid))
 
     @property
-    def unique_id(self) -> str:
-        """Return the ID of this device."""
-        serial = self.accessory_info.value(CharacteristicsTypes.SERIAL_NUMBER)
-        return f"homekit-{serial}-{self._iid}"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device if any."""
-        return self.accessory_info.value(CharacteristicsTypes.NAME)
-
-    @property
     def available(self) -> bool:
         """Return True if entity is available."""
         return self._accessory.available
-
-    @property
-    def device_info(self):
-        """Return the device info."""
-        info = self.accessory_info
-        accessory_serial = info.value(CharacteristicsTypes.SERIAL_NUMBER)
-
-        device_info = {
-            "identifiers": {(DOMAIN, "serial-number", accessory_serial)},
-            "name": info.value(CharacteristicsTypes.NAME),
-            "manufacturer": info.value(CharacteristicsTypes.MANUFACTURER, ""),
-            "model": info.value(CharacteristicsTypes.MODEL, ""),
-            "sw_version": info.value(CharacteristicsTypes.FIRMWARE_REVISION, ""),
-        }
-
-        # Some devices only have a single accessory - we don't add a
-        # via_device otherwise it would be self referential.
-        bridge_serial = self._accessory.connection_info["serial-number"]
-        if accessory_serial != bridge_serial:
-            device_info["via_device"] = (DOMAIN, "serial-number", bridge_serial)
-
-        return device_info
 
     def get_characteristic_types(self):
         """Define the homekit characteristics the entity cares about."""
