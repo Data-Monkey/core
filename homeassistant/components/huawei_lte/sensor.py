@@ -425,11 +425,6 @@ class HuaweiLteSensor(HuaweiLteBaseEntity, SensorEntity):
         return f"{self.key}.{self.item}"
 
     @property
-    def state(self) -> StateType:
-        """Return sensor state."""
-        return self._state
-
-    @property
     def device_class(self) -> str | None:
         """Return sensor device class."""
         return self.meta.device_class
@@ -438,14 +433,6 @@ class HuaweiLteSensor(HuaweiLteBaseEntity, SensorEntity):
     def unit_of_measurement(self) -> str | None:
         """Return sensor's unit of measurement."""
         return self.meta.unit or self._unit
-
-    @property
-    def icon(self) -> str | None:
-        """Return icon for sensor."""
-        icon = self.meta.icon
-        if callable(icon):
-            return icon(self.state)
-        return icon
 
     @property
     def entity_registry_enabled_default(self) -> bool:
@@ -464,5 +451,10 @@ class HuaweiLteSensor(HuaweiLteBaseEntity, SensorEntity):
         if not callable(formatter):
             formatter = format_default
 
-        self._state, self._unit = formatter(value)
+        self._attr_state, self._unit = formatter(value)
         self._available = value is not None
+
+        icon = self.meta.icon
+        self._attr_icon = str(icon)
+        if callable(icon):
+            self._attr_icon = icon(self.state)

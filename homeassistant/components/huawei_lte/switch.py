@@ -44,6 +44,7 @@ class HuaweiLteBaseSwitch(HuaweiLteBaseEntity, SwitchEntity):
     key: str
     item: str
     _raw_state: str | None = attr.ib(init=False, default=None)
+    _attr_device_class = DEVICE_CLASS_SWITCH
 
     def _turn(self, state: bool) -> None:
         raise NotImplementedError
@@ -55,11 +56,6 @@ class HuaweiLteBaseSwitch(HuaweiLteBaseEntity, SwitchEntity):
     def turn_off(self, **kwargs: Any) -> None:
         """Turn switch off."""
         self._turn(state=False)
-
-    @property
-    def device_class(self) -> str:
-        """Return device class."""
-        return DEVICE_CLASS_SWITCH
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to needed data on add."""
@@ -80,7 +76,7 @@ class HuaweiLteBaseSwitch(HuaweiLteBaseEntity, SwitchEntity):
             self._available = False
             return
         self._available = True
-        self._raw_state = str(value)
+        self._attr_is_on = bool(value)
 
 
 @attr.s
@@ -100,18 +96,9 @@ class HuaweiLteMobileDataSwitch(HuaweiLteBaseSwitch):
     def _device_unique_id(self) -> str:
         return f"{self.key}.{self.item}"
 
-    @property
-    def is_on(self) -> bool:
-        """Return whether the switch is on."""
-        return self._raw_state == "1"
-
     def _turn(self, state: bool) -> None:
         value = 1 if state else 0
         self.router.client.dial_up.set_mobile_dataswitch(dataswitch=value)
-        self._raw_state = str(value)
+        self._attr_is_on = str(value) == "1"
+        self._attr_icon = "mdi:signal" if self.is_on else "mdi:signal-off"
         self.schedule_update_ha_state()
-
-    @property
-    def icon(self) -> str:
-        """Return switch icon."""
-        return "mdi:signal" if self.is_on else "mdi:signal-off"

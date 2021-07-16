@@ -183,7 +183,6 @@ class HuaweiLteScannerEntity(HuaweiLteBaseEntity, ScannerEntity):
     _ip_address: str | None = attr.ib(init=False, default=None)
     _is_connected: bool = attr.ib(init=False, default=False)
     _hostname: str | None = attr.ib(init=False, default=None)
-    _extra_state_attributes: dict[str, Any] = attr.ib(init=False, factory=dict)
 
     @property
     def _entity_name(self) -> str:
@@ -218,11 +217,6 @@ class HuaweiLteScannerEntity(HuaweiLteBaseEntity, ScannerEntity):
         """Get whether the entity is connected."""
         return self._is_connected
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Get additional attributes related to entity state."""
-        return self._extra_state_attributes
-
     async def async_update(self) -> None:
         """Update state."""
         hosts = _get_hosts(self.router)
@@ -239,7 +233,7 @@ class HuaweiLteScannerEntity(HuaweiLteBaseEntity, ScannerEntity):
             # Pick one for model sanity; e.g. the dhcp component to which it is fed, parses and expects to see just one.
             self._ip_address = (host.get("IpAddress") or "").split(";", 2)[0] or None
             self._hostname = host.get("HostName")
-            self._extra_state_attributes = {
+            self._attr_extra_state_attributes = {
                 _better_snakecase(k): v
                 for k, v in host.items()
                 if k

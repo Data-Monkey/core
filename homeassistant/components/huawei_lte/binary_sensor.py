@@ -56,10 +56,7 @@ class HuaweiLteBaseBinarySensor(HuaweiLteBaseEntity, BinarySensorEntity):
     item: str
     _raw_state: str | None = attr.ib(init=False, default=None)
 
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added to the entity registry."""
-        return False
+    _attr_entity_registry_enabled_default = False
 
     @property
     def _device_unique_id(self) -> str:
@@ -136,11 +133,6 @@ class HuaweiLteMobileConnectionBinarySensor(HuaweiLteBaseBinarySensor):
     def icon(self) -> str:
         """Return mobile connectivity sensor icon."""
         return "mdi:signal" if self.is_on else "mdi:signal-off"
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added to the entity registry."""
-        return True
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
