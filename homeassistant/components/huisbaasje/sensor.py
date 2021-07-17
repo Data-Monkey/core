@@ -44,35 +44,15 @@ class HuisbaasjeSensor(CoordinatorEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
-        self._user_id = user_id
-        self._name = name
-        self._device_class = device_class
-        self._unit_of_measurement = unit_of_measurement
+        self._attr_name = name
+        self._attr_unique_id = f"{DOMAIN}_{user_id}_{source_type}_{sensor_type}"
+        self._attr_device_class = device_class
+        self._attr_unit_of_measurement = unit_of_measurement
         self._source_type = source_type
         self._sensor_type = sensor_type
-        self._icon = icon
+        self._attr_icon = icon
         self._precision = precision
         self._attr_state_class = state_class
-
-    @property
-    def unique_id(self) -> str:
-        """Return an unique id for the sensor."""
-        return f"{DOMAIN}_{self._user_id}_{self._source_type}_{self._sensor_type}"
-
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class of the sensor."""
-        return self._device_class
-
-    @property
-    def icon(self) -> str:
-        """Return the icon to use for the sensor."""
-        return self._icon
 
     @property
     def state(self):
@@ -83,11 +63,6 @@ class HuisbaasjeSensor(CoordinatorEntity, SensorEntity):
                 self._precision,
             )
         return None
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit of measurement."""
-        return self._unit_of_measurement
 
     @property
     def available(self) -> bool:
