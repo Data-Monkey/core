@@ -43,16 +43,22 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class IGloLamp(LightEntity):
     """Representation of an iGlo light."""
 
+    _attr_supported_features = (
+        SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR | SUPPORT_EFFECT
+    )
+
     def __init__(self, name, host, port):
         """Initialize the light."""
 
-        self._name = name
+        self._attr_name = name
         self._lamp = Lamp(0, host, port)
-
-    @property
-    def name(self):
-        """Return the name of the light."""
-        return self._name
+        self._attr_min_mireds = math.ceil(
+            color_util.color_temperature_kelvin_to_mired(self._lamp.max_kelvin)
+        )
+        self._attr_max_mireds = math.ceil(
+            color_util.color_temperature_kelvin_to_mired(self._lamp.min_kelvin)
+        )
+        self._attr_effect_list = self._lamp.effect_list()
 
     @property
     def brightness(self):
@@ -65,20 +71,6 @@ class IGloLamp(LightEntity):
         return color_util.color_temperature_kelvin_to_mired(self._lamp.state()["white"])
 
     @property
-    def min_mireds(self):
-        """Return the coldest color_temp that this light supports."""
-        return math.ceil(
-            color_util.color_temperature_kelvin_to_mired(self._lamp.max_kelvin)
-        )
-
-    @property
-    def max_mireds(self):
-        """Return the warmest color_temp that this light supports."""
-        return math.ceil(
-            color_util.color_temperature_kelvin_to_mired(self._lamp.min_kelvin)
-        )
-
-    @property
     def hs_color(self):
         """Return the hs value."""
         return color_util.color_RGB_to_hs(*self._lamp.state()["rgb"])
@@ -87,16 +79,6 @@ class IGloLamp(LightEntity):
     def effect(self):
         """Return the current effect."""
         return self._lamp.state()["effect"]
-
-    @property
-    def effect_list(self):
-        """Return the list of supported effects."""
-        return self._lamp.effect_list()
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_COLOR_TEMP | SUPPORT_COLOR | SUPPORT_EFFECT
 
     @property
     def is_on(self):
