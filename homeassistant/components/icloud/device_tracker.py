@@ -8,7 +8,6 @@ from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo
 
 from .account import IcloudAccount, IcloudDevice
 from .const import (
@@ -65,17 +64,16 @@ class IcloudTrackerEntity(TrackerEntity):
         """Set up the iCloud tracker entity."""
         self._account = account
         self._device = device
+        self._attr_name = device.name
+        self._attr_icon = icon_for_icloud_device(device)
+        self._attr_unique_id = device.unique_id
         self._unsub_dispatcher = None
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return self._device.unique_id
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return self._device.name
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, device.unique_id)},
+            "name": device.name,
+            "manufacturer": "Apple",
+            "model": device.device_model,
+        }
 
     @property
     def location_accuracy(self):
@@ -103,24 +101,9 @@ class IcloudTrackerEntity(TrackerEntity):
         return SOURCE_TYPE_GPS
 
     @property
-    def icon(self) -> str:
-        """Return the icon."""
-        return icon_for_icloud_device(self._device)
-
-    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the device state attributes."""
         return self._device.extra_state_attributes
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device information."""
-        return {
-            "identifiers": {(DOMAIN, self._device.unique_id)},
-            "name": self._device.name,
-            "manufacturer": "Apple",
-            "model": self._device.device_model,
-        }
 
     async def async_added_to_hass(self):
         """Register state update callback."""
