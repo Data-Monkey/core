@@ -117,74 +117,27 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class HvvDepartureBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """HVVDepartureBinarySensor class."""
 
+    _attr_device_class = DEVICE_CLASS_PROBLEM
+    _attr_should_poll = False
+
     def __init__(self, coordinator, idx, config_entry):
         """Initialize."""
         super().__init__(coordinator)
         self.coordinator = coordinator
         self.idx = idx
-        self.config_entry = config_entry
-
-    @property
-    def is_on(self):
-        """Return entity state."""
-        return self.coordinator.data[self.idx]["state"]
-
-    @property
-    def should_poll(self):
-        """No need to poll. Coordinator notifies entity of updates."""
-        return False
-
-    @property
-    def available(self):
-        """Return if entity is available."""
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data[self.idx]["available"]
-        )
-
-    @property
-    def device_info(self):
-        """Return the device info for this sensor."""
-        return {
+        self._attr_name = coordinator.data[idx]["name"]
+        self._attr_unique_id = idx
+        self._attr_device_info = {
             "identifiers": {
                 (
                     DOMAIN,
-                    self.config_entry.entry_id,
-                    self.config_entry.data[CONF_STATION]["id"],
-                    self.config_entry.data[CONF_STATION]["type"],
+                    config_entry.entry_id,
+                    config_entry.data[CONF_STATION]["id"],
+                    config_entry.data[CONF_STATION]["type"],
                 )
             },
-            "name": f"Departures at {self.config_entry.data[CONF_STATION]['name']}",
+            "name": f"Departures at {config_entry.data[CONF_STATION]['name']}",
             "manufacturer": MANUFACTURER,
-        }
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self.coordinator.data[self.idx]["name"]
-
-    @property
-    def unique_id(self):
-        """Return a unique ID to use for this sensor."""
-        return self.idx
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_PROBLEM
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        if not (
-            self.coordinator.last_update_success
-            and self.coordinator.data[self.idx]["available"]
-        ):
-            return None
-        return {
-            k: v
-            for k, v in self.coordinator.data[self.idx]["attributes"].items()
-            if v is not None
         }
 
     async def async_added_to_hass(self):
@@ -199,3 +152,18 @@ class HvvDepartureBinarySensor(CoordinatorEntity, BinarySensorEntity):
         Only used by the generic entity update service.
         """
         await self.coordinator.async_request_refresh()
+        self._attr_is_on = self.coordinator.data[self.idx]["state"]
+        self._attr_available = (
+            self.coordinator.last_update_success
+            and self.coordinator.data[self.idx]["available"]
+        )
+        self._attr_extra_state_attributes = None
+        if (
+            self.coordinator.last_update_success
+            and self.coordinator.data[self.idx]["available"]
+        ):
+            self._attr_extra_state_attributes = {
+                k: v
+                for k, v in self.coordinator.data[self.idx]["attributes"].items()
+                if v is not None
+            }

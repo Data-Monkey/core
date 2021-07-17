@@ -7,7 +7,6 @@ from pygti.exceptions import InvalidAuth
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import ATTR_ATTRIBUTION, ATTR_ID, DEVICE_CLASS_TIMESTAMP
-from homeassistant.helpers import aiohttp_client
 from homeassistant.util import Throttle
 from homeassistant.util.dt import get_time_zone, utcnow
 
@@ -36,26 +35,40 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
     """Set up the sensor platform."""
     hub = hass.data[DOMAIN][config_entry.entry_id]
 
-    session = aiohttp_client.async_get_clientsession(hass)
-
-    sensor = HVVDepartureSensor(hass, config_entry, session, hub)
+    sensor = HVVDepartureSensor(config_entry, hub)
     async_add_devices([sensor], True)
 
 
 class HVVDepartureSensor(SensorEntity):
     """HVVDepartureSensor class."""
 
-    def __init__(self, hass, config_entry, session, hub):
+    _attr_device_class = DEVICE_CLASS_TIMESTAMP
+    _attr_icon = ICON
+
+    def __init__(self, config_entry, hub):
         """Initialize."""
         self.config_entry = config_entry
-        self.station_name = self.config_entry.data[CONF_STATION]["name"]
-        self.attr = {ATTR_ATTRIBUTION: ATTRIBUTION}
-        self._available = False
-        self._state = None
-        self._name = f"Departures at {self.station_name}"
+        self._attr_extra_state_attributes = {ATTR_ATTRIBUTION: ATTRIBUTION}
+        self._attr_available = False
+        self._attr_name = f"Departures at {config_entry.data[CONF_STATION]['name']}"
         self._last_error = None
 
         self.gti = hub.gti
+        station_id = config_entry.data[CONF_STATION]["id"]
+        station_type = config_entry.data[CONF_STATION]["type"]
+        self._attr_unique_id = f"{config_entry.entry_id}-{station_id}-{station_type}"
+        self._attr_device_info = {
+            "identifiers": {
+                (
+                    DOMAIN,
+                    config_entry.entry_id,
+                    config_entry.data[CONF_STATION]["id"],
+                    config_entry.data[CONF_STATION]["type"],
+                )
+            },
+            "name": self.name,
+            "manufacturer": MANUFACTURER,
+        }
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self, **kwargs):
@@ -86,20 +99,20 @@ class HVVDepartureSensor(SensorEntity):
             if self._last_error != InvalidAuth:
                 _LOGGER.error("Authentication failed: %r", error)
                 self._last_error = InvalidAuth
-            self._available = False
+            self._attr_available = False
         except ClientConnectorError as error:
             if self._last_error != ClientConnectorError:
                 _LOGGER.warning("Network unavailable: %r", error)
                 self._last_error = ClientConnectorError
-            self._available = False
+            self._attr_available = False
         except Exception as error:  # pylint: disable=broad-except
             if self._last_error != error:
                 _LOGGER.error("Error occurred while fetching data: %r", error)
                 self._last_error = error
-            self._available = False
+            self._attr_available = False
 
         if not (data["returnCode"] == "OK" and data.get("departures")):
-            self._available = False
+            self._attr_available = False
             return
 
         if self._last_error == ClientConnectorError:
@@ -110,14 +123,14 @@ class HVVDepartureSensor(SensorEntity):
         departure = data["departures"][0]
         line = departure["line"]
         delay = departure.get("delay", 0)
-        self._available = True
-        self._state = (
+        self._attr_available = True
+        self._attr_state = (
             departure_time
             + timedelta(minutes=departure["timeOffset"])
             + timedelta(seconds=delay)
         ).isoformat()
 
-        self.attr.update(
+        self._attr_extra_state_attributes.update(
             {
                 ATTR_LINE: line["name"],
                 ATTR_ORIGIN: line["origin"],
@@ -145,58 +158,4 @@ class HVVDepartureSensor(SensorEntity):
                     ATTR_DELAY: delay,
                 }
             )
-        self.attr[ATTR_NEXT] = departures
-
-    @property
-    def unique_id(self):
-        """Return a unique ID to use for this sensor."""
-        station_id = self.config_entry.data[CONF_STATION]["id"]
-        station_type = self.config_entry.data[CONF_STATION]["type"]
-
-        return f"{self.config_entry.entry_id}-{station_id}-{station_type}"
-
-    @property
-    def device_info(self):
-        """Return the device info for this sensor."""
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self.config_entry.entry_id,
-                    self.config_entry.data[CONF_STATION]["id"],
-                    self.config_entry.data[CONF_STATION]["type"],
-                )
-            },
-            "name": self._name,
-            "manufacturer": MANUFACTURER,
-        }
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def icon(self):
-        """Return the icon of the sensor."""
-        return ICON
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        return self._available
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return DEVICE_CLASS_TIMESTAMP
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return self.attr
+        self._attr_extra_state_attributes[ATTR_NEXT] = departures
