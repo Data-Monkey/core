@@ -61,31 +61,23 @@ class ShadeEntity(HDEntity):
         super().__init__(coordinator, device_info, room_name, shade.id)
         self._shade_name = shade_name
         self._shade = shade
-
-    @property
-    def device_info(self):
-        """Return the device_info of the device."""
-
         device_info = {
-            "identifiers": {(DOMAIN, self._shade.id)},
-            "name": self._shade_name,
-            "suggested_area": self._room_name,
+            "identifiers": {(DOMAIN, shade.id)},
+            "name": self.name,
+            "suggested_area": room_name,
             "manufacturer": MANUFACTURER,
-            "model": self._shade.raw_data[ATTR_TYPE],
-            "via_device": (DOMAIN, self._device_info[DEVICE_SERIAL_NUMBER]),
+            "model": shade.raw_data[ATTR_TYPE],
+            "via_device": (DOMAIN, device_info[DEVICE_SERIAL_NUMBER]),
         }
 
-        for shade in self._shade.shade_types:
+        for shade_type in shade.shade_types:
             if shade.shade_type == device_info["model"]:
-                device_info["model"] = shade.description
+                device_info["model"] = shade_type.description
                 break
 
-        if FIRMWARE not in self._shade.raw_data:
-            return device_info
+        if FIRMWARE in shade.raw_data:
+            firmware = shade.raw_data[FIRMWARE]
+            sw_version = f"{firmware[FIRMWARE_REVISION]}.{firmware[FIRMWARE_SUB_REVISION]}.{firmware[FIRMWARE_BUILD]}"
+            device_info["sw_version"] = sw_version
 
-        firmware = self._shade.raw_data[FIRMWARE]
-        sw_version = f"{firmware[FIRMWARE_REVISION]}.{firmware[FIRMWARE_SUB_REVISION]}.{firmware[FIRMWARE_BUILD]}"
-
-        device_info["sw_version"] = sw_version
-
-        return device_info
+        self._attr_device_info = device_info

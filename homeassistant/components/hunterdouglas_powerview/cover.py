@@ -99,58 +99,28 @@ def hass_position_to_hd(hass_position):
 class PowerViewShade(ShadeEntity, CoverEntity):
     """Representation of a powerview shade."""
 
+    _attr_device_class = DEVICE_CLASS_SHADE
+
     def __init__(self, coordinator, device_info, room_name, shade, name):
         """Initialize the shade."""
         super().__init__(coordinator, device_info, room_name, shade, name)
         self._shade = shade
-        self._is_opening = False
-        self._is_closing = False
+        self._attr_name = self._shade_name
+        self._attr_is_opening = False
+        self._attr_is_closing = False
         self._last_action_timestamp = 0
         self._scheduled_transition_update = None
-        self._current_cover_position = MIN_POSITION
+        self._attr_current_cover_position = hd_position_to_hass(MIN_POSITION)
+        self._attr_is_closed = True
+        supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
+        if self._device_info[DEVICE_MODEL] != LEGACY_DEVICE_MODEL:
+            supported_features |= SUPPORT_STOP
+        self._attr_supported_features = supported_features
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {STATE_ATTRIBUTE_ROOM_NAME: self._room_name}
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
-        if self._device_info[DEVICE_MODEL] != LEGACY_DEVICE_MODEL:
-            supported_features |= SUPPORT_STOP
-        return supported_features
-
-    @property
-    def is_closed(self):
-        """Return if the cover is closed."""
-        return self._current_cover_position == MIN_POSITION
-
-    @property
-    def is_opening(self):
-        """Return if the cover is opening."""
-        return self._is_opening
-
-    @property
-    def is_closing(self):
-        """Return if the cover is closing."""
-        return self._is_closing
-
-    @property
-    def current_cover_position(self):
-        """Return the current position of cover."""
-        return hd_position_to_hass(self._current_cover_position)
-
-    @property
-    def device_class(self):
-        """Return device class."""
-        return DEVICE_CLASS_SHADE
-
-    @property
-    def name(self):
-        """Return the name of the shade."""
-        return self._shade_name
 
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
@@ -175,7 +145,7 @@ class PowerViewShade(ShadeEntity, CoverEntity):
 
     async def _async_move(self, target_hass_position):
         """Move the shade to a position."""
-        current_hass_position = hd_position_to_hass(self._current_cover_position)
+        current_hass_position = hd_position_to_hass(self.current_cover_position)
         steps_to_move = abs(current_hass_position - target_hass_position)
         if not steps_to_move:
             return
@@ -188,12 +158,12 @@ class PowerViewShade(ShadeEntity, CoverEntity):
                 }
             )
         )
-        self._is_opening = False
-        self._is_closing = False
+        self._attr_is_opening = False
+        self._attr_is_closing = False
         if target_hass_position > current_hass_position:
-            self._is_opening = True
+            self._attr_is_opening = True
         elif target_hass_position < current_hass_position:
-            self._is_closing = True
+            self._attr_is_closing = True
         self.async_write_ha_state()
 
     @callback
@@ -215,9 +185,12 @@ class PowerViewShade(ShadeEntity, CoverEntity):
         _LOGGER.debug("Raw data update: %s", self._shade.raw_data)
         position_data = self._shade.raw_data.get(ATTR_POSITION_DATA, {})
         if ATTR_POSITION1 in position_data:
-            self._current_cover_position = int(position_data[ATTR_POSITION1])
-        self._is_opening = False
-        self._is_closing = False
+            self._attr_current_cover_position = hd_position_to_hass(
+                int(position_data[ATTR_POSITION1])
+            )
+            self._attr_is_closed = self.current_cover_position == MIN_POSITION
+        self._attr_is_opening = False
+        self._attr_is_closing = False
 
     @callback
     def _async_cancel_scheduled_transition_update(self):

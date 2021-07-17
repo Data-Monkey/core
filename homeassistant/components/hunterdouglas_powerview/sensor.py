@@ -47,34 +47,16 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class PowerViewShadeBatterySensor(ShadeEntity, SensorEntity):
-    """Representation of an shade battery charge sensor."""
+    """Representation of a shade battery charge sensor."""
 
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return PERCENTAGE
+    _attr_device_class = DEVICE_CLASS_BATTERY
+    _attr_unit_of_measurement = PERCENTAGE
 
-    @property
-    def name(self):
-        """Name of the shade battery."""
-        return f"{self._shade_name} Battery"
-
-    @property
-    def device_class(self):
-        """Shade battery Class."""
-        return DEVICE_CLASS_BATTERY
-
-    @property
-    def unique_id(self):
-        """Shade battery Uniqueid."""
-        return f"{self._unique_id}_charge"
-
-    @property
-    def state(self):
-        """Get the current value in percentage."""
-        return round(
-            self._shade.raw_data[SHADE_BATTERY_LEVEL] / SHADE_BATTERY_LEVEL_MAX * 100
-        )
+    def __init__(self, coordinator, device_info, room_name, shade, shade_name):
+        """Initialize a shade battery charge sensor."""
+        super().__init__(coordinator, device_info, room_name, shade, shade_name)
+        self._attr_name = f"{self._shade_name} Battery"
+        self._attr_unique_id = f"{self._unique_id}_charge"
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
@@ -86,4 +68,7 @@ class PowerViewShadeBatterySensor(ShadeEntity, SensorEntity):
     def _async_update_shade_from_group(self):
         """Update with new data from the coordinator."""
         self._shade.raw_data = self.coordinator.data[self._shade.id]
+        self._attr_state = (
+            self._shade.raw_data[SHADE_BATTERY_LEVEL] / SHADE_BATTERY_LEVEL_MAX * 100
+        )
         self.async_write_ha_state()
