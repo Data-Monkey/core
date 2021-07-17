@@ -1,6 +1,8 @@
 """Support for Aqualink temperature sensors."""
 from __future__ import annotations
 
+from iaqualink.device import AqualinkDevice
+
 from homeassistant.components.sensor import DOMAIN, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import DEVICE_CLASS_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
@@ -25,19 +27,16 @@ async def async_setup_entry(
 class HassAqualinkSensor(AqualinkEntity, SensorEntity):
     """Representation of a sensor."""
 
-    @property
-    def name(self) -> str:
-        """Return the name of the sensor."""
-        return self.dev.label
-
-    @property
-    def unit_of_measurement(self) -> str | None:
-        """Return the measurement unit for the sensor."""
-        if self.dev.name.endswith("_temp"):
-            if self.dev.system.temp_unit == "F":
-                return TEMP_FAHRENHEIT
-            return TEMP_CELSIUS
-        return None
+    def __init__(self, dev: AqualinkDevice) -> None:
+        """Initialize a sensor."""
+        super().__init__(dev)
+        self._attr_name = dev.label
+        if dev.name.endswith("_temp"):
+            self._attr_unit_of_measurement = TEMP_CELSIUS
+            if dev.system.temp_unit == "F":
+                self._attr_unit_of_measurement = TEMP_FAHRENHEIT
+        if dev.name.endswith("_temp"):
+            self._attr_device_class = DEVICE_CLASS_TEMPERATURE
 
     @property
     def state(self) -> str | None:
@@ -50,10 +49,3 @@ class HassAqualinkSensor(AqualinkEntity, SensorEntity):
         except ValueError:
             state = float(self.dev.state)
         return state
-
-    @property
-    def device_class(self) -> str | None:
-        """Return the class of the sensor."""
-        if self.dev.name.endswith("_temp"):
-            return DEVICE_CLASS_TEMPERATURE
-        return None

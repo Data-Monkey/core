@@ -1,5 +1,6 @@
 """Support for Aqualink pool lights."""
 from iaqualink import AqualinkLightEffect
+from iaqualink.device import AqualinkDevice
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -31,10 +32,16 @@ async def async_setup_entry(
 class HassAqualinkLight(AqualinkEntity, LightEntity):
     """Representation of a light."""
 
-    @property
-    def name(self) -> str:
-        """Return the name of the light."""
-        return self.dev.label
+    def __init__(self, dev: AqualinkDevice) -> None:
+        """Initialize a light."""
+        super().__init__(dev)
+        self._attr_name = dev.label
+        self._attr_supported_features = 0
+        if self.dev.is_dimmer:
+            self._attr_supported_features = SUPPORT_BRIGHTNESS
+        elif self.dev.is_color:
+            self._attr_supported_features = SUPPORT_EFFECT
+        self._attr_effect_list = list(AqualinkLightEffect.__members__)
 
     @property
     def is_on(self) -> bool:
@@ -79,19 +86,3 @@ class HassAqualinkLight(AqualinkEntity, LightEntity):
     def effect(self) -> str:
         """Return the current light effect if supported."""
         return AqualinkLightEffect(self.dev.effect).name
-
-    @property
-    def effect_list(self) -> list:
-        """Return supported light effects."""
-        return list(AqualinkLightEffect.__members__)
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of features supported by the light."""
-        if self.dev.is_dimmer:
-            return SUPPORT_BRIGHTNESS
-
-        if self.dev.is_color:
-            return SUPPORT_EFFECT
-
-        return 0

@@ -10,6 +10,7 @@ from iaqualink.const import (
     AQUALINK_TEMP_FAHRENHEIT_HIGH,
     AQUALINK_TEMP_FAHRENHEIT_LOW,
 )
+from iaqualink.device import AqualinkDevice
 
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
@@ -43,20 +44,21 @@ async def async_setup_entry(
 class HassAqualinkThermostat(AqualinkEntity, ClimateEntity):
     """Representation of a thermostat."""
 
-    @property
-    def name(self) -> str:
-        """Return the name of the thermostat."""
-        return self.dev.label.split(" ")[0]
+    _attr_hvac_modes = CLIMATE_SUPPORTED_MODES
+    _attr_supported_features = SUPPORT_TARGET_TEMPERATURE
 
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_TARGET_TEMPERATURE
-
-    @property
-    def hvac_modes(self) -> list[str]:
-        """Return the list of supported HVAC modes."""
-        return CLIMATE_SUPPORTED_MODES
+    def __init__(self, dev: AqualinkDevice) -> None:
+        """Initialize a thermostat."""
+        super().__init__(dev)
+        self._attr_name = dev.label.split(" ")[0]
+        self._attr_temperature_unit = TEMP_CELSIUS
+        if self.dev.system.temp_unit == "F":
+            self._attr_temperature_unit = TEMP_FAHRENHEIT
+        self._attr_min_temp = AQUALINK_TEMP_CELSIUS_LOW
+        self._attr_max_temp = AQUALINK_TEMP_CELSIUS_HIGH
+        if self.temperature_unit == TEMP_FAHRENHEIT:
+            self._attr_min_temp = AQUALINK_TEMP_FAHRENHEIT_LOW
+            self._attr_max_temp = AQUALINK_TEMP_FAHRENHEIT_HIGH
 
     @property
     def pump(self) -> AqualinkPump:
@@ -81,27 +83,6 @@ class HassAqualinkThermostat(AqualinkEntity, ClimateEntity):
             await self.heater.turn_off()
         else:
             _LOGGER.warning("Unknown operation mode: %s", hvac_mode)
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        if self.dev.system.temp_unit == "F":
-            return TEMP_FAHRENHEIT
-        return TEMP_CELSIUS
-
-    @property
-    def min_temp(self) -> int:
-        """Return the minimum temperature supported by the thermostat."""
-        if self.temperature_unit == TEMP_FAHRENHEIT:
-            return AQUALINK_TEMP_FAHRENHEIT_LOW
-        return AQUALINK_TEMP_CELSIUS_LOW
-
-    @property
-    def max_temp(self) -> int:
-        """Return the minimum temperature supported by the thermostat."""
-        if self.temperature_unit == TEMP_FAHRENHEIT:
-            return AQUALINK_TEMP_FAHRENHEIT_HIGH
-        return AQUALINK_TEMP_CELSIUS_HIGH
 
     @property
     def target_temperature(self) -> float:

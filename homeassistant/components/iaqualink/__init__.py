@@ -34,7 +34,7 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
-from homeassistant.helpers.entity import DeviceInfo, Entity
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType
 
@@ -201,29 +201,25 @@ class AqualinkEntity(Entity):
     class.
     """
 
+    _attr_should_poll = False
+
     def __init__(self, dev: AqualinkDevice) -> None:
         """Initialize the entity."""
         self.dev = dev
+        self._attr_unique_id = f"{dev.system.serial}_{dev.name}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "model": self.dev.__class__.__name__.replace("Aqualink", ""),
+            "manufacturer": "Jandy",
+            "via_device": (DOMAIN, dev.system.serial),
+        }
 
     async def async_added_to_hass(self) -> None:
         """Set up a listener when this entity is added to HA."""
         self.async_on_remove(
             async_dispatcher_connect(self.hass, DOMAIN, self.async_write_ha_state)
         )
-
-    @property
-    def should_poll(self) -> bool:
-        """Return False as entities shouldn't be polled.
-
-        Entities are checked periodically as the integration runs periodic
-        updates on a timer.
-        """
-        return False
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier for this entity."""
-        return f"{self.dev.system.serial}_{self.dev.name}"
 
     @property
     def assumed_state(self) -> bool:
@@ -234,14 +230,3 @@ class AqualinkEntity(Entity):
     def available(self) -> bool:
         """Return whether the device is available or not."""
         return self.dev.system.online
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return {
-            "identifiers": {(DOMAIN, self.unique_id)},
-            "name": self.name,
-            "model": self.dev.__class__.__name__.replace("Aqualink", ""),
-            "manufacturer": "Jandy",
-            "via_device": (DOMAIN, self.dev.system.serial),
-        }
