@@ -77,35 +77,17 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class IamMeter(CoordinatorEntity, SensorEntity):
     """Class for a sensor."""
 
+    _attr_icon = "mdi:flash"
+
     def __init__(self, coordinator, uid, sensor_name, unit, dev_name):
         """Initialize an iammeter sensor."""
         super().__init__(coordinator)
-        self.uid = uid
+        self._attr_name = f"{dev_name} {sensor_name}"
+        self._attr_unique_id = uid
         self.sensor_name = sensor_name
-        self.unit = unit
-        self.dev_name = dev_name
+        self._attr_unit_of_measurement = unit
 
     @property
     def state(self):
         """Return the state of the sensor."""
         return self.coordinator.data.data[self.sensor_name]
-
-    @property
-    def unique_id(self):
-        """Return unique id."""
-        return self.uid
-
-    @property
-    def name(self):
-        """Name of this iammeter attribute."""
-        return f"{self.dev_name} {self.sensor_name}"
-
-    @property
-    def icon(self):
-        """Icon for each sensor."""
-        return "mdi:flash"
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self.unit
