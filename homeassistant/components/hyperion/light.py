@@ -24,7 +24,6 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 import homeassistant.util.color as color_util
 
@@ -128,6 +127,9 @@ async def async_setup_entry(
 class HyperionBaseLight(LightEntity):
     """A Hyperion light base class."""
 
+    _attr_should_poll = False
+    _attr_supported_features = SUPPORT_HYPERION
+
     def __init__(
         self,
         server_id: str,
@@ -137,17 +139,17 @@ class HyperionBaseLight(LightEntity):
         hyperion_client: client.HyperionClient,
     ) -> None:
         """Initialize the light."""
-        self._unique_id = self._compute_unique_id(server_id, instance_num)
-        self._name = self._compute_name(instance_name)
-        self._device_id = get_hyperion_device_id(server_id, instance_num)
+        self._attr_unique_id = self._compute_unique_id(server_id, instance_num)
+        self._attr_name = self._compute_name(instance_name)
         self._instance_name = instance_name
         self._options = options
         self._client = hyperion_client
 
         # Active state representing the Hyperion instance.
-        self._brightness: int = 255
+        self._attr_brightness = 255
         self._rgb_color: Sequence[int] = DEFAULT_COLOR
-        self._effect: str = KEY_EFFECT_SOLID
+        self._attr_hs_color = color_util.color_RGB_to_hs(*self._rgb_color)
+        self._attr_effect = KEY_EFFECT_SOLID
 
         self._static_effect_list: list[str] = [KEY_EFFECT_SOLID]
         if self._support_external_effects:
@@ -155,7 +157,7 @@ class HyperionBaseLight(LightEntity):
                 const.KEY_COMPONENTID_TO_NAME[component]
                 for component in const.KEY_COMPONENTID_EXTERNAL_SOURCES
             ]
-        self._effect_list: list[str] = self._static_effect_list[:]
+        self._attr_effect_list = self._static_effect_list[:]
 
         self._client_callbacks: Mapping[str, Callable[[dict[str, Any]], None]] = {
             f"{const.KEY_ADJUSTMENT}-{const.KEY_UPDATE}": self._update_adjustment,
@@ -163,6 +165,12 @@ class HyperionBaseLight(LightEntity):
             f"{const.KEY_EFFECTS}-{const.KEY_UPDATE}": self._update_effect_list,
             f"{const.KEY_PRIORITIES}-{const.KEY_UPDATE}": self._update_priorities,
             f"{const.KEY_CLIENT}-{const.KEY_UPDATE}": self._update_client,
+        }
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, get_hyperion_device_id(server_id, instance_num))},
+            "name": instance_name,
+            "manufacturer": HYPERION_MANUFACTURER_NAME,
+            "model": HYPERION_MODEL_NAME,
         }
 
     def _compute_unique_id(self, server_id: str, instance_num: int) -> str:
@@ -172,31 +180,6 @@ class HyperionBaseLight(LightEntity):
     def _compute_name(self, instance_name: str) -> str:
         """Compute the name of the light."""
         raise NotImplementedError
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Whether or not the entity is enabled by default."""
-        return True
-
-    @property
-    def should_poll(self) -> bool:
-        """Return whether or not this entity should be polled."""
-        return False
-
-    @property
-    def name(self) -> str:
-        """Return the name of the light."""
-        return self._name
-
-    @property
-    def brightness(self) -> int:
-        """Return the brightness of this light between 0..255."""
-        return self._brightness
-
-    @property
-    def hs_color(self) -> tuple[float, float]:
-        """Return last color value set."""
-        return color_util.color_RGB_to_hs(*self._rgb_color)
 
     @property
     def icon(self) -> str:
@@ -213,39 +196,9 @@ class HyperionBaseLight(LightEntity):
         return ICON_LIGHTBULB
 
     @property
-    def effect(self) -> str:
-        """Return the current effect."""
-        return self._effect
-
-    @property
-    def effect_list(self) -> list[str]:
-        """Return the list of supported effects."""
-        return self._effect_list
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_HYPERION
-
-    @property
     def available(self) -> bool:
         """Return server availability."""
         return bool(self._client.has_loaded_state)
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique id for this instance."""
-        return self._unique_id
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self._instance_name,
-            "manufacturer": HYPERION_MANUFACTURER_NAME,
-            "model": HYPERION_MODEL_NAME,
-        }
 
     def _get_option(self, key: str) -> Any:
         """Get a value from the provided options."""
@@ -261,7 +214,7 @@ class HyperionBaseLight(LightEntity):
         if ATTR_EFFECT not in kwargs and ATTR_HS_COLOR in kwargs:
             effect = KEY_EFFECT_SOLID
         else:
-            effect = kwargs.get(ATTR_EFFECT, self._effect)
+            effect = kwargs.get(ATTR_EFFECT, self.effect)
         rgb_color: Sequence[int]
         if ATTR_HS_COLOR in kwargs:
             rgb_color = color_util.color_hs_to_RGB(*kwargs[ATTR_HS_COLOR])
@@ -361,11 +314,12 @@ class HyperionBaseLight(LightEntity):
     ) -> None:
         """Set the internal state."""
         if brightness is not None:
-            self._brightness = brightness
+            self._attr_brightness = brightness
         if rgb_color is not None:
             self._rgb_color = rgb_color
+            self._attr_hs_color = color_util.color_RGB_to_hs(*rgb_color)
         if effect is not None:
-            self._effect = effect
+            self._attr_effect = effect
 
     @callback
     def _update_components(self, _: dict[str, Any] | None = None) -> None:
@@ -428,7 +382,7 @@ class HyperionBaseLight(LightEntity):
                 if effect_name not in hide_effects:
                     effect_list.append(effect_name)
 
-        self._effect_list = [
+        self._attr_effect_list = [
             effect for effect in self._static_effect_list if effect not in hide_effects
         ] + effect_list
         self.async_write_ha_state()
@@ -444,9 +398,9 @@ class HyperionBaseLight(LightEntity):
             "Hyperion full state update: On=%s,Brightness=%i,Effect=%s "
             "(%i effects total),Color=%s",
             self.is_on,
-            self._brightness,
-            self._effect,
-            len(self._effect_list),
+            self.brightness,
+            self.effect,
+            len(self.effect_list),  # type: ignore
             self._rgb_color,
         )
 
@@ -560,6 +514,8 @@ class HyperionLight(HyperionBaseLight):
 class HyperionPriorityLight(HyperionBaseLight):
     """A Hyperion light that only acts on a single Hyperion priority."""
 
+    _attr_entity_registry_enabled_default = False
+
     def _compute_unique_id(self, server_id: str, instance_num: int) -> str:
         """Compute a unique id for this instance."""
         return get_hyperion_unique_id(
@@ -569,11 +525,6 @@ class HyperionPriorityLight(HyperionBaseLight):
     def _compute_name(self, instance_name: str) -> str:
         """Compute the name of the light."""
         return f"{instance_name} {NAME_SUFFIX_HYPERION_PRIORITY_LIGHT}".strip()
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Whether or not the entity is enabled by default."""
-        return False
 
     @property
     def is_on(self) -> bool:

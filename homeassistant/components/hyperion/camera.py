@@ -32,7 +32,6 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import HomeAssistantType
 
@@ -121,12 +120,10 @@ class HyperionCamera(Camera):
         """Initialize the switch."""
         super().__init__()
 
-        self._unique_id = get_hyperion_unique_id(
+        self._attr_unique_id = get_hyperion_unique_id(
             server_id, instance_num, TYPE_HYPERION_CAMERA
         )
-        self._name = f"{instance_name} {NAME_SUFFIX_HYPERION_CAMERA}".strip()
-        self._device_id = get_hyperion_device_id(server_id, instance_num)
-        self._instance_name = instance_name
+        self._attr_name = f"{instance_name} {NAME_SUFFIX_HYPERION_CAMERA}".strip()
         self._client = hyperion_client
 
         self._image_cond = asyncio.Condition()
@@ -138,16 +135,12 @@ class HyperionCamera(Camera):
         self._client_callbacks = {
             f"{KEY_LEDCOLORS}-{KEY_IMAGE_STREAM}-{KEY_UPDATE}": self._update_imagestream
         }
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique id for this instance."""
-        return self._unique_id
-
-    @property
-    def name(self) -> str:
-        """Return the name of the switch."""
-        return self._name
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, get_hyperion_device_id(server_id, instance_num))},
+            "name": instance_name,
+            "manufacturer": HYPERION_MANUFACTURER_NAME,
+            "model": HYPERION_MODEL_NAME,
+        }
 
     @property
     def is_on(self) -> bool:
@@ -237,7 +230,7 @@ class HyperionCamera(Camera):
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
-                SIGNAL_ENTITY_REMOVE.format(self._unique_id),
+                SIGNAL_ENTITY_REMOVE.format(self.unique_id),
                 functools.partial(self.async_remove, force_remove=True),
             )
         )
@@ -247,16 +240,6 @@ class HyperionCamera(Camera):
     async def async_will_remove_from_hass(self) -> None:
         """Cleanup prior to hass removal."""
         self._client.remove_callbacks(self._client_callbacks)
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self._instance_name,
-            "manufacturer": HYPERION_MANUFACTURER_NAME,
-            "model": HYPERION_MODEL_NAME,
-        }
 
 
 CAMERA_TYPES = {

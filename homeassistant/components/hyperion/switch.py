@@ -31,7 +31,6 @@ from homeassistant.helpers.dispatcher import (
     async_dispatcher_connect,
     async_dispatcher_send,
 )
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
@@ -127,6 +126,9 @@ async def async_setup_entry(
 class HyperionComponentSwitch(SwitchEntity):
     """ComponentBinarySwitch switch class."""
 
+    _attr_entity_registry_enabled_default = False
+    _attr_should_poll = False
+
     def __init__(
         self,
         server_id: str,
@@ -136,38 +138,21 @@ class HyperionComponentSwitch(SwitchEntity):
         hyperion_client: client.HyperionClient,
     ) -> None:
         """Initialize the switch."""
-        self._unique_id = _component_to_unique_id(
+        self._attr_unique_id = _component_to_unique_id(
             server_id, component_name, instance_num
         )
-        self._device_id = get_hyperion_device_id(server_id, instance_num)
-        self._name = _component_to_switch_name(component_name, instance_name)
-        self._instance_name = instance_name
+        self._attr_name = _component_to_switch_name(component_name, instance_name)
         self._component_name = component_name
         self._client = hyperion_client
         self._client_callbacks = {
             f"{KEY_COMPONENTS}-{KEY_UPDATE}": self._update_components
         }
-
-    @property
-    def should_poll(self) -> bool:
-        """Return whether or not this entity should be polled."""
-        return False
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Whether or not the entity is enabled by default."""
-        # These component controls are for advanced users and are disabled by default.
-        return False
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique id for this instance."""
-        return self._unique_id
-
-    @property
-    def name(self) -> str:
-        """Return the name of the switch."""
-        return self._name
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, get_hyperion_device_id(server_id, instance_num))},
+            "name": instance_name,
+            "manufacturer": HYPERION_MANUFACTURER_NAME,
+            "model": HYPERION_MODEL_NAME,
+        }
 
     @property
     def is_on(self) -> bool:
@@ -181,16 +166,6 @@ class HyperionComponentSwitch(SwitchEntity):
     def available(self) -> bool:
         """Return server availability."""
         return bool(self._client.has_loaded_state)
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._device_id)},
-            "name": self._instance_name,
-            "manufacturer": HYPERION_MANUFACTURER_NAME,
-            "model": HYPERION_MODEL_NAME,
-        }
 
     async def _async_send_set_component(self, value: bool) -> None:
         """Send a component control request."""
@@ -221,7 +196,7 @@ class HyperionComponentSwitch(SwitchEntity):
         self.async_on_remove(
             async_dispatcher_connect(
                 self.hass,
-                SIGNAL_ENTITY_REMOVE.format(self._unique_id),
+                SIGNAL_ENTITY_REMOVE.format(self.unique_id),
                 functools.partial(self.async_remove, force_remove=True),
             )
         )
