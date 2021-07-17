@@ -122,6 +122,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class IFTTTAlarmPanel(AlarmControlPanelEntity):
     """Representation of an alarm control panel controlled through IFTTT."""
 
+    _attr_assumed_state = True
+    _attr_supported_features = (
+        SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_ARM_NIGHT
+    )
+
     def __init__(
         self,
         name,
@@ -134,7 +139,7 @@ class IFTTTAlarmPanel(AlarmControlPanelEntity):
         optimistic,
     ):
         """Initialize the alarm control panel."""
-        self._name = name
+        self._attr_name = name
         self._code = code
         self._code_arm_required = code_arm_required
         self._event_away = event_away
@@ -142,27 +147,6 @@ class IFTTTAlarmPanel(AlarmControlPanelEntity):
         self._event_night = event_night
         self._event_disarm = event_disarm
         self._optimistic = optimistic
-        self._state = None
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY | SUPPORT_ALARM_ARM_NIGHT
-
-    @property
-    def assumed_state(self):
-        """Notify that this platform return an assumed state."""
-        return True
 
     @property
     def code_format(self):
@@ -204,13 +188,13 @@ class IFTTTAlarmPanel(AlarmControlPanelEntity):
         self.hass.services.call(DOMAIN, SERVICE_TRIGGER, data)
         _LOGGER.debug("Called IFTTT integration to trigger event %s", event)
         if self._optimistic:
-            self._state = state
+            self._attr_state = state
 
     def push_alarm_state(self, value):
         """Push the alarm state to the given value."""
         if value in ALLOWED_STATES:
             _LOGGER.debug("Pushed the alarm state to %s", value)
-            self._state = value
+            self._attr_state = value
 
     def _check_code(self, code):
         return self._code is None or self._code == code
