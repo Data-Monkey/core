@@ -122,13 +122,11 @@ class HydrawiseEntity(Entity):
         """Initialize the Hydrawise entity."""
         self.data = data
         self._sensor_type = sensor_type
-        self._name = f"{self.data['name']} {DEVICE_MAP[self._sensor_type][DEVICE_MAP_INDEX.index('KEY_INDEX')]}"
-        self._state = None
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+        self._attr_name = f"{data['name']} {DEVICE_MAP[sensor_type][DEVICE_MAP_INDEX.index('KEY_INDEX')]}"
+        self._attr_icon = DEVICE_MAP[sensor_type][DEVICE_MAP_INDEX.index("ICON_INDEX")]
+        self._attr_device_class = DEVICE_MAP[sensor_type][
+            DEVICE_MAP_INDEX.index("DEVICE_CLASS_INDEX")
+        ]
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -147,15 +145,3 @@ class HydrawiseEntity(Entity):
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {ATTR_ATTRIBUTION: ATTRIBUTION, "identifier": self.data.get("relay")}
-
-    @property
-    def device_class(self):
-        """Return the device class of the sensor type."""
-        return DEVICE_MAP[self._sensor_type][
-            DEVICE_MAP_INDEX.index("DEVICE_CLASS_INDEX")
-        ]
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        return DEVICE_MAP[self._sensor_type][DEVICE_MAP_INDEX.index("ICON_INDEX")]

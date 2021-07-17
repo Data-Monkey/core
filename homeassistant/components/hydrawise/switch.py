@@ -53,11 +53,6 @@ class HydrawiseSwitch(HydrawiseEntity, SwitchEntity):
         super().__init__(*args)
         self._default_watering_timer = default_watering_timer
 
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self._state
-
     def turn_on(self, **kwargs):
         """Turn the device on."""
         relay_data = self.data["relay"] - 1
@@ -80,10 +75,10 @@ class HydrawiseSwitch(HydrawiseEntity, SwitchEntity):
         """Update device state."""
         relay_data = self.data["relay"] - 1
         mydata = self.hass.data[DATA_HYDRAWISE].data
-        _LOGGER.debug("Updating Hydrawise switch: %s", self._name)
+        _LOGGER.debug("Updating Hydrawise switch: %s", self.name)
         if self._sensor_type == "manual_watering":
-            self._state = mydata.relays[relay_data]["timestr"] == "Now"
+            self._attr_is_on = mydata.relays[relay_data]["timestr"] == "Now"
         elif self._sensor_type == "auto_watering":
-            self._state = (mydata.relays[relay_data]["timestr"] != "") and (
+            self._attr_is_on = (mydata.relays[relay_data]["timestr"] != "") and (
                 mydata.relays[relay_data]["timestr"] != "Now"
             )

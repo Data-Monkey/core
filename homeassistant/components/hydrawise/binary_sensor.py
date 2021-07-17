@@ -41,17 +41,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class HydrawiseBinarySensor(HydrawiseEntity, BinarySensorEntity):
     """A sensor implementation for Hydrawise device."""
 
-    @property
-    def is_on(self):
-        """Return true if the binary sensor is on."""
-        return self._state
-
     def update(self):
         """Get the latest data and updates the state."""
-        _LOGGER.debug("Updating Hydrawise binary sensor: %s", self._name)
+        _LOGGER.debug("Updating Hydrawise binary sensor: %s", self.name)
         mydata = self.hass.data[DATA_HYDRAWISE].data
         if self._sensor_type == "status":
-            self._state = mydata.status == "All good!"
+            self._attr_is_on = mydata.status == "All good!"
         elif self._sensor_type == "is_watering":
             relay_data = mydata.relays[self.data["relay"] - 1]
-            self._state = relay_data["timestr"] == "Now"
+            self._attr_is_on = relay_data["timestr"] == "Now"
