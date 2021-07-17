@@ -168,20 +168,7 @@ class GenericHueSensor(GenericHueDevice, entity.Entity):
     """Representation of a Hue sensor."""
 
     should_poll = False
-
-    @property
-    def available(self):
-        """Return if sensor is available."""
-        return self.bridge.sensor_manager.coordinator.last_update_success and (
-            self.bridge.allow_unreachable
-            # remotes like Hue Tap (ZGPSwitchSensor) have no _reachability_
-            or self.sensor.config.get("reachable", True)
-        )
-
-    @property
-    def state_class(self):
-        """Return the state class of this entity, from STATE_CLASSES, if any."""
-        return STATE_CLASS_MEASUREMENT
+    _attr_device_class = STATE_CLASS_MEASUREMENT
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
@@ -198,6 +185,11 @@ class GenericHueSensor(GenericHueDevice, entity.Entity):
         Only used by the generic entity update service.
         """
         await self.bridge.sensor_manager.coordinator.async_request_refresh()
+        self._attr_available = self.bridge.sensor_manager.coordinator.last_update_success and (
+            self.bridge.allow_unreachable
+            # remotes like Hue Tap (ZGPSwitchSensor) have no _reachability_
+            or self.sensor.config.get("reachable", True)
+        )
 
 
 class GenericZLLSensor(GenericHueSensor):

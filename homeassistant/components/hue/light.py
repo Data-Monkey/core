@@ -275,7 +275,7 @@ class HueLight(CoordinatorEntity, LightEntity):
         self.light = light
         self.bridge = bridge
         self.is_group = is_group
-        self._supported_features = supported_features
+        self._attr_supported_features = supported_features
         self._rooms = rooms
 
         if is_group:
@@ -284,12 +284,14 @@ class HueLight(CoordinatorEntity, LightEntity):
             self.is_innr = False
             self.gamut_typ = GAMUT_TYPE_UNAVAILABLE
             self.gamut = None
+            self._attr_effect_list = [EFFECT_COLORLOOP, EFFECT_RANDOM]
         else:
             self.is_osram = light.manufacturername == "OSRAM"
             self.is_philips = light.manufacturername == "Philips"
             self.is_innr = light.manufacturername == "innr"
             self.gamut_typ = self.light.colorgamuttype
             self.gamut = self.light.colorgamut
+            self._attr_effect_list = [EFFECT_RANDOM]
             _LOGGER.debug("Color gamut of %s: %s", self.name, str(self.gamut))
             if self.light.swupdatestate == "readytoinstall":
                 err = (
@@ -302,6 +304,27 @@ class HueLight(CoordinatorEntity, LightEntity):
                 _LOGGER.debug(err, self.name, str(self.gamut))
                 self.gamut_typ = GAMUT_TYPE_UNAVAILABLE
                 self.gamut = None
+
+        if self.light.type not in (
+            GROUP_TYPE_LIGHT_GROUP,
+            GROUP_TYPE_ROOM,
+            GROUP_TYPE_LUMINAIRE,
+            GROUP_TYPE_LIGHT_SOURCE,
+        ):
+            info = {
+                "identifiers": {(HUE_DOMAIN, self.device_id)},
+                "name": self.name,
+                "manufacturer": self.light.manufacturername,
+                # productname added in Hue Bridge API 1.24
+                # (published 03/05/2018)
+                "model": self.light.productname or self.light.modelid,
+                # Not yet exposed as properties in aiohue
+                "sw_version": self.light.raw["swversion"],
+                "via_device": (HUE_DOMAIN, self.bridge.api.config.bridgeid),
+            }
+            if self.light.id in self._rooms:
+                info["suggested_area"] = self._rooms[self.light.id]
+            self._attr_device_info = info
 
     @property
     def unique_id(self):
@@ -408,49 +431,9 @@ class HueLight(CoordinatorEntity, LightEntity):
         )
 
     @property
-    def supported_features(self):
-        """Flag supported features."""
-        return self._supported_features
-
-    @property
     def effect(self):
         """Return the current effect."""
         return self.light.state.get("effect", None)
-
-    @property
-    def effect_list(self):
-        """Return the list of supported effects."""
-        if self.is_osram:
-            return [EFFECT_RANDOM]
-        return [EFFECT_COLORLOOP, EFFECT_RANDOM]
-
-    @property
-    def device_info(self):
-        """Return the device info."""
-        if self.light.type in (
-            GROUP_TYPE_LIGHT_GROUP,
-            GROUP_TYPE_ROOM,
-            GROUP_TYPE_LUMINAIRE,
-            GROUP_TYPE_LIGHT_SOURCE,
-        ):
-            return None
-
-        info = {
-            "identifiers": {(HUE_DOMAIN, self.device_id)},
-            "name": self.name,
-            "manufacturer": self.light.manufacturername,
-            # productname added in Hue Bridge API 1.24
-            # (published 03/05/2018)
-            "model": self.light.productname or self.light.modelid,
-            # Not yet exposed as properties in aiohue
-            "sw_version": self.light.raw["swversion"],
-            "via_device": (HUE_DOMAIN, self.bridge.api.config.bridgeid),
-        }
-
-        if self.light.id in self._rooms:
-            info["suggested_area"] = self._rooms[self.light.id]
-
-        return info
 
     async def async_added_to_hass(self) -> None:
         """Handle entity being added to Home Assistant."""

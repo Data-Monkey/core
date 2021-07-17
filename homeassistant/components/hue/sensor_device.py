@@ -10,7 +10,8 @@ class GenericHueDevice(entity.Entity):
     def __init__(self, sensor, name, bridge, primary_sensor=None):
         """Initialize the sensor."""
         self.sensor = sensor
-        self._name = name
+        self._attr_name = name
+        self._attr_unique_id = sensor.uniqueid
         self._primary_sensor = primary_sensor
         self.bridge = bridge
 
@@ -23,16 +24,6 @@ class GenericHueDevice(entity.Entity):
     def device_id(self):
         """Return the ID of the physical device this sensor is part of."""
         return self.unique_id[:23]
-
-    @property
-    def unique_id(self):
-        """Return the ID of this Hue sensor."""
-        return self.sensor.uniqueid
-
-    @property
-    def name(self):
-        """Return a friendly name for the sensor."""
-        return self._name
 
     @property
     def swupdatestate(self):
