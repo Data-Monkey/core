@@ -28,18 +28,9 @@ class KMtronicSwitch(CoordinatorEntity, SwitchEntity):
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
         self._relay = relay
-        self._config_entry_id = config_entry_id
         self._reverse = reverse
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return f"Relay{self._relay.id}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID of the entity."""
-        return f"{self._config_entry_id}_relay{self._relay.id}"
+        self._attr_name = f"Relay{relay.id}"
+        self._attr_unique_id = f"{config_entry_id}_relay{relay.id}"
 
     @property
     def is_on(self):
