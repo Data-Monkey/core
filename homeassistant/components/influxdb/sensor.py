@@ -176,15 +176,14 @@ class InfluxSensor(SensorEntity):
 
     def __init__(self, hass, influx, query):
         """Initialize the sensor."""
-        self._name = query.get(CONF_NAME)
-        self._unit_of_measurement = query.get(CONF_UNIT_OF_MEASUREMENT)
+        self._attr_name = query.get(CONF_NAME)
+        self._attr_unit_of_measurement = query.get(CONF_UNIT_OF_MEASUREMENT)
         value_template = query.get(CONF_VALUE_TEMPLATE)
         if value_template is not None:
             self._value_template = value_template
             self._value_template.hass = hass
         else:
             self._value_template = None
-        self._state = None
         self._hass = hass
 
         if query[CONF_LANGUAGE] == LANGUAGE_FLUX:
@@ -212,21 +211,6 @@ class InfluxSensor(SensorEntity):
                 where_clause,
             )
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit_of_measurement
-
     def update(self):
         """Get the latest data from Influxdb and updates the states."""
         self.data.update()
@@ -238,7 +222,7 @@ class InfluxSensor(SensorEntity):
                 str(value), STATE_UNKNOWN
             )
 
-        self._state = value
+        self._attr_state = value
 
 
 class InfluxFluxSensorData:
