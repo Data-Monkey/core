@@ -151,28 +151,12 @@ class EmailContentSensor(SensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self._email_reader = email_reader
-        self._name = name
+        self._attr_name = name
         self._allowed_senders = [sender.upper() for sender in allowed_senders]
         self._value_template = value_template
+        self._attr_state = None
         self._last_id = None
-        self._message = None
-        self._state_attributes = None
         self.connected = self._email_reader.connect()
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the current email state."""
-        return self._message
-
-    @property
-    def extra_state_attributes(self):
-        """Return other state attributes for the message."""
-        return self._state_attributes
 
     def render_template(self, email_message):
         """Render the message template."""
@@ -242,8 +226,8 @@ class EmailContentSensor(SensorEntity):
         email_message = self._email_reader.read_next()
 
         if email_message is None:
-            self._message = None
-            self._state_attributes = {}
+            self._attr_state = None
+            self._attr_extra_state_attributes = {}
             return
 
         if self.sender_allowed(email_message):
@@ -252,8 +236,8 @@ class EmailContentSensor(SensorEntity):
             if self._value_template is not None:
                 message = self.render_template(email_message)
 
-            self._message = message
-            self._state_attributes = {
+            self._attr_state = message
+            self._attr_extra_state_attributes = {
                 ATTR_FROM: EmailContentSensor.get_msg_sender(email_message),
                 ATTR_SUBJECT: EmailContentSensor.get_msg_subject(email_message),
                 ATTR_DATE: email_message["Date"],
