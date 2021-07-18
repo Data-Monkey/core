@@ -132,21 +132,17 @@ class IgnSismologiaFeedEntityManager:
 class IgnSismologiaLocationEvent(GeolocationEvent):
     """This represents an external event with IGN Sismologia feed data."""
 
+    _attr_icon = "mdi:pulse"
+    _attr_should_poll = False
     _attr_unit_of_measurement = LENGTH_KILOMETERS
 
     def __init__(self, feed_manager, external_id):
         """Initialize entity with data from feed entry."""
         self._feed_manager = feed_manager
         self._external_id = external_id
-        self._title = None
         self._distance = None
         self._latitude = None
         self._longitude = None
-        self._attribution = None
-        self._region = None
-        self._magnitude = None
-        self._publication_date = None
-        self._image_url = None
         self._remove_signal_delete = None
         self._remove_signal_update = None
 
@@ -175,11 +171,6 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
         """Call update method."""
         self.async_schedule_update_ha_state(True)
 
-    @property
-    def should_poll(self):
-        """No polling needed for IGN Sismologia feed location events."""
-        return False
-
     async def async_update(self):
         """Update this entity from the data held in the feed manager."""
         _LOGGER.debug("Updating %s", self._external_id)
@@ -189,36 +180,36 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
 
     def _update_from_feed(self, feed_entry):
         """Update the internal state from the provided feed entry."""
-        self._title = feed_entry.title
         self._distance = feed_entry.distance_to_home
         self._latitude = feed_entry.coordinates[0]
         self._longitude = feed_entry.coordinates[1]
-        self._attribution = feed_entry.attribution
-        self._region = feed_entry.region
-        self._magnitude = feed_entry.magnitude
-        self._publication_date = feed_entry.published
-        self._image_url = feed_entry.image_url
+        region = feed_entry.region
+        magnitude = feed_entry.magnitude
+        self._attr_name = feed_entry.title
+        if magnitude and region:
+            self._attr_name = f"M {magnitude:.1f} - {region}"
+        elif magnitude:
+            self._attr_name = f"M {magnitude:.1f}"
+        elif region:
+            self._attr_name = region
 
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return "mdi:pulse"
+        self._attr_extra_state_attributes = {}
+        for key, value in (
+            (ATTR_EXTERNAL_ID, self._external_id),
+            (ATTR_TITLE, feed_entry.title),
+            (ATTR_REGION, feed_entry.region),
+            (ATTR_MAGNITUDE, feed_entry.magnitude),
+            (ATTR_ATTRIBUTION, feed_entry.attribution),
+            (ATTR_PUBLICATION_DATE, feed_entry.published),
+            (ATTR_IMAGE_URL, feed_entry.image_url),
+        ):
+            if value or isinstance(value, bool):
+                self._attr_extra_state_attributes[key] = value
 
     @property
     def source(self) -> str:
         """Return source value of this external event."""
         return SOURCE
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the entity."""
-        if self._magnitude and self._region:
-            return f"M {self._magnitude:.1f} - {self._region}"
-        if self._magnitude:
-            return f"M {self._magnitude:.1f}"
-        if self._region:
-            return self._region
-        return self._title
 
     @property
     def distance(self) -> float | None:
@@ -234,20 +225,3 @@ class IgnSismologiaLocationEvent(GeolocationEvent):
     def longitude(self) -> float | None:
         """Return longitude value of this external event."""
         return self._longitude
-
-    @property
-    def extra_state_attributes(self):
-        """Return the device state attributes."""
-        attributes = {}
-        for key, value in (
-            (ATTR_EXTERNAL_ID, self._external_id),
-            (ATTR_TITLE, self._title),
-            (ATTR_REGION, self._region),
-            (ATTR_MAGNITUDE, self._magnitude),
-            (ATTR_ATTRIBUTION, self._attribution),
-            (ATTR_PUBLICATION_DATE, self._publication_date),
-            (ATTR_IMAGE_URL, self._image_url),
-        ):
-            if value or isinstance(value, bool):
-                attributes[key] = value
-        return attributes
