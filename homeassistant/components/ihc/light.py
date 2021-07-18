@@ -58,33 +58,18 @@ class IhcLight(IHCDevice, LightEntity):
         super().__init__(ihc_controller, name, ihc_id, info, product)
         self._ihc_off_id = ihc_off_id
         self._ihc_on_id = ihc_on_id
-        self._brightness = 0
+        self._attr_brightness = 0
         self._dimmable = dimmable
-        self._state = False
-
-    @property
-    def brightness(self) -> int:
-        """Return the brightness of this light between 0..255."""
-        return self._brightness
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if light is on."""
-        return self._state
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        if self._dimmable:
-            return SUPPORT_BRIGHTNESS
-        return 0
+        self._attr_is_on = False
+        if dimmable:
+            self._attr_supported_features = SUPPORT_BRIGHTNESS
 
     async def async_turn_on(self, **kwargs):
         """Turn the light on."""
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs[ATTR_BRIGHTNESS]
         else:
-            brightness = self._brightness
+            brightness = self.brightness
             if brightness == 0:
                 brightness = 255
 
@@ -112,10 +97,10 @@ class IhcLight(IHCDevice, LightEntity):
         """Handle IHC notifications."""
         if isinstance(value, bool):
             self._dimmable = False
-            self._state = value != 0
+            self._attr_is_on = value != 0
         else:
             self._dimmable = True
-            self._state = value > 0
-            if self._state:
-                self._brightness = int(value * 255 / 100)
+            self._attr_is_on = value > 0
+            if self.is_on:
+                self._attr_brightness = int(value * 255 / 100)
         self.schedule_update_ha_state()

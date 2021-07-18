@@ -35,29 +35,11 @@ class IHCSensor(IHCDevice, SensorEntity):
     ) -> None:
         """Initialize the IHC sensor."""
         super().__init__(ihc_controller, name, ihc_id, info, product)
-        self._state = None
-        self._unit_of_measurement = unit
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return (
-            DEVICE_CLASS_TEMPERATURE
-            if self._unit_of_measurement in TEMPERATURE_UNITS
-            else None
-        )
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit_of_measurement
+        self._attr_unit_of_measurement = unit
+        if unit in TEMPERATURE_UNITS:
+            self._attr_device_class = DEVICE_CLASS_TEMPERATURE
 
     def on_ihc_change(self, ihc_id, value):
         """Handle IHC resource change."""
-        self._state = value
+        self._attr_state = value
         self.schedule_update_ha_state()

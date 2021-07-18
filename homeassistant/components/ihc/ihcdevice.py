@@ -10,12 +10,14 @@ class IHCDevice(Entity):
     Derived classes must implement the on_ihc_change method
     """
 
+    _attr_should_poll = False
+
     def __init__(
         self, ihc_controller, name, ihc_id: int, info: bool, product=None
     ) -> None:
         """Initialize IHC attributes."""
         self.ihc_controller = ihc_controller
-        self._name = name
+        self._attr_name = name
         self.ihc_id = ihc_id
         self.info = info
         if product:
@@ -30,16 +32,6 @@ class IHCDevice(Entity):
     async def async_added_to_hass(self):
         """Add callback for IHC changes."""
         self.ihc_controller.add_notify_event(self.ihc_id, self.on_ihc_change, True)
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling needed for IHC devices."""
-        return False
-
-    @property
-    def name(self):
-        """Return the device name."""
-        return self._name
 
     @property
     def extra_state_attributes(self):

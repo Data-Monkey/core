@@ -54,24 +54,13 @@ class IHCBinarySensor(IHCDevice, BinarySensorEntity):
     ) -> None:
         """Initialize the IHC binary sensor."""
         super().__init__(ihc_controller, name, ihc_id, info, product)
-        self._state = None
-        self._sensor_type = sensor_type
+        self._attr_device_class = sensor_type
         self.inverting = inverting
-
-    @property
-    def device_class(self):
-        """Return the class of this sensor."""
-        return self._sensor_type
-
-    @property
-    def is_on(self):
-        """Return true if the binary sensor is on/open."""
-        return self._state
 
     def on_ihc_change(self, ihc_id, value):
         """IHC resource has changed."""
         if self.inverting:
-            self._state = not value
+            self._attr_is_on = not value
         else:
-            self._state = value
+            self._attr_is_on = value
         self.schedule_update_ha_state()
