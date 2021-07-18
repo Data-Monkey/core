@@ -160,14 +160,16 @@ async def async_get_location(hass, api, latitude, longitude):
 class IPMAWeather(WeatherEntity):
     """Representation of a weather condition."""
 
+    _attr_attribution = ATTRIBUTION
+    _attr_temperature_unit = TEMP_CELSIUS
+
     def __init__(self, location: Location, api: IPMA_API, config):
         """Initialise the platform with a data instance and station name."""
         self._api = api
-        self._location_name = config.get(CONF_NAME, location.name)
+        self._attr_name = config.get(CONF_NAME, location.name)
+        self._attr_unique_id = f"{location.station_latitude}, {location.station_longitude}, {config.get(CONF_MODE)}"
         self._mode = config.get(CONF_MODE)
         self._location = location
-        self._observation = None
-        self._forecast = None
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
@@ -177,153 +179,91 @@ class IPMAWeather(WeatherEntity):
             new_forecast = await self._location.forecast(self._api)
 
             if new_observation:
-                self._observation = new_observation
+                self._attr_temperature = new_observation.temperature
+                self._attr_pressure = new_observation.pressure
+                self._attr_humidity = new_observation.humidity
+                self._attr_wind_speed = new_observation.wind_intensity_km
+                self._attr_wind_bearing = new_observation.wind_direction
             else:
+                self._attr_temperature = None
+                self._attr_pressure = None
+                self._attr_humidity = None
+                self._attr_wind_speed = None
+                self._attr_wind_bearing = None
                 _LOGGER.warning("Could not update weather observation")
 
             if new_forecast:
-                self._forecast = new_forecast
+                self._attr_condition = next(
+                    (
+                        k
+                        for k, v in CONDITION_CLASSES.items()
+                        if new_forecast[0].weather_type in v
+                    ),
+                    None,
+                )
+                if self._mode == "hourly":
+                    forecast_filtered = [
+                        x
+                        for x in new_forecast
+                        if x.forecasted_hours == 1
+                        and parse_datetime(x.forecast_date)
+                        > (now().utcnow() - timedelta(hours=1))
+                    ]
+
+                    fcdata_out = [
+                        {
+                            ATTR_FORECAST_TIME: data_in.forecast_date,
+                            ATTR_FORECAST_CONDITION: next(
+                                (
+                                    k
+                                    for k, v in CONDITION_CLASSES.items()
+                                    if int(data_in.weather_type) in v
+                                ),
+                                None,
+                            ),
+                            ATTR_FORECAST_TEMP: float(data_in.feels_like_temperature),
+                            ATTR_FORECAST_PRECIPITATION_PROBABILITY: (
+                                int(float(data_in.precipitation_probability))
+                                if int(float(data_in.precipitation_probability)) >= 0
+                                else None
+                            ),
+                            ATTR_FORECAST_WIND_SPEED: data_in.wind_strength,
+                            ATTR_FORECAST_WIND_BEARING: data_in.wind_direction,
+                        }
+                        for data_in in forecast_filtered
+                    ]
+                else:
+                    forecast_filtered = [
+                        f for f in new_forecast if f.forecasted_hours == 24
+                    ]
+                    fcdata_out = [
+                        {
+                            ATTR_FORECAST_TIME: data_in.forecast_date,
+                            ATTR_FORECAST_CONDITION: next(
+                                (
+                                    k
+                                    for k, v in CONDITION_CLASSES.items()
+                                    if int(data_in.weather_type) in v
+                                ),
+                                None,
+                            ),
+                            ATTR_FORECAST_TEMP_LOW: data_in.min_temperature,
+                            ATTR_FORECAST_TEMP: data_in.max_temperature,
+                            ATTR_FORECAST_PRECIPITATION_PROBABILITY: data_in.precipitation_probability,
+                            ATTR_FORECAST_WIND_SPEED: data_in.wind_strength,
+                            ATTR_FORECAST_WIND_BEARING: data_in.wind_direction,
+                        }
+                        for data_in in forecast_filtered
+                    ]
+
+                self._attr_forecast = fcdata_out
             else:
+                self._attr_condition = None
+                self._attr_forecast = []
                 _LOGGER.warning("Could not update weather forecast")
 
             _LOGGER.debug(
                 "Updated location %s, observation %s",
                 self._location.name,
-                self._observation,
+                new_observation,
             )
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique id."""
-        return f"{self._location.station_latitude}, {self._location.station_longitude}, {self._mode}"
-
-    @property
-    def attribution(self):
-        """Return the attribution."""
-        return ATTRIBUTION
-
-    @property
-    def name(self):
-        """Return the name of the station."""
-        return self._location_name
-
-    @property
-    def condition(self):
-        """Return the current condition."""
-        if not self._forecast:
-            return
-
-        return next(
-            (
-                k
-                for k, v in CONDITION_CLASSES.items()
-                if self._forecast[0].weather_type in v
-            ),
-            None,
-        )
-
-    @property
-    def temperature(self):
-        """Return the current temperature."""
-        if not self._observation:
-            return None
-
-        return self._observation.temperature
-
-    @property
-    def pressure(self):
-        """Return the current pressure."""
-        if not self._observation:
-            return None
-
-        return self._observation.pressure
-
-    @property
-    def humidity(self):
-        """Return the name of the sensor."""
-        if not self._observation:
-            return None
-
-        return self._observation.humidity
-
-    @property
-    def wind_speed(self):
-        """Return the current windspeed."""
-        if not self._observation:
-            return None
-
-        return self._observation.wind_intensity_km
-
-    @property
-    def wind_bearing(self):
-        """Return the current wind bearing (degrees)."""
-        if not self._observation:
-            return None
-
-        return self._observation.wind_direction
-
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
-    @property
-    def forecast(self):
-        """Return the forecast array."""
-        if not self._forecast:
-            return []
-
-        if self._mode == "hourly":
-            forecast_filtered = [
-                x
-                for x in self._forecast
-                if x.forecasted_hours == 1
-                and parse_datetime(x.forecast_date)
-                > (now().utcnow() - timedelta(hours=1))
-            ]
-
-            fcdata_out = [
-                {
-                    ATTR_FORECAST_TIME: data_in.forecast_date,
-                    ATTR_FORECAST_CONDITION: next(
-                        (
-                            k
-                            for k, v in CONDITION_CLASSES.items()
-                            if int(data_in.weather_type) in v
-                        ),
-                        None,
-                    ),
-                    ATTR_FORECAST_TEMP: float(data_in.feels_like_temperature),
-                    ATTR_FORECAST_PRECIPITATION_PROBABILITY: (
-                        int(float(data_in.precipitation_probability))
-                        if int(float(data_in.precipitation_probability)) >= 0
-                        else None
-                    ),
-                    ATTR_FORECAST_WIND_SPEED: data_in.wind_strength,
-                    ATTR_FORECAST_WIND_BEARING: data_in.wind_direction,
-                }
-                for data_in in forecast_filtered
-            ]
-        else:
-            forecast_filtered = [f for f in self._forecast if f.forecasted_hours == 24]
-            fcdata_out = [
-                {
-                    ATTR_FORECAST_TIME: data_in.forecast_date,
-                    ATTR_FORECAST_CONDITION: next(
-                        (
-                            k
-                            for k, v in CONDITION_CLASSES.items()
-                            if int(data_in.weather_type) in v
-                        ),
-                        None,
-                    ),
-                    ATTR_FORECAST_TEMP_LOW: data_in.min_temperature,
-                    ATTR_FORECAST_TEMP: data_in.max_temperature,
-                    ATTR_FORECAST_PRECIPITATION_PROBABILITY: data_in.precipitation_probability,
-                    ATTR_FORECAST_WIND_SPEED: data_in.wind_strength,
-                    ATTR_FORECAST_WIND_BEARING: data_in.wind_direction,
-                }
-                for data_in in forecast_filtered
-            ]
-
-        return fcdata_out
