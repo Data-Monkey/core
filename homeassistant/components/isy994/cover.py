@@ -47,6 +47,8 @@ async def async_setup_entry(
 class ISYCoverEntity(ISYNodeEntity, CoverEntity):
     """Representation of an ISY994 cover device."""
 
+    _attr_supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
+
     @property
     def current_cover_position(self) -> int:
         """Return the current cover position."""
@@ -62,11 +64,6 @@ class ISYCoverEntity(ISYNodeEntity, CoverEntity):
         if self._node.status == ISY_VALUE_UNKNOWN:
             return None
         return self._node.status == 0
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
 
     async def async_open_cover(self, **kwargs) -> None:
         """Send the open cover command to the ISY994 cover device."""

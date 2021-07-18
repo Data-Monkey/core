@@ -78,41 +78,31 @@ async def async_setup_entry(
 class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
     """Representation of an ISY994 thermostat entity."""
 
+    _attr_fan_modes = [FAN_AUTO, FAN_ON]
+    _attr_hvac_modes = ISY_HVAC_MODES
+    _attr_precision = PRECISION_TENTHS
+    _attr_supported_features = ISY_SUPPORTED_FEATURES
+    _attr_target_temperature_step = 1.0
+
     def __init__(self, node) -> None:
         """Initialize the ISY Thermostat entity."""
         super().__init__(node)
         self._node = node
-        self._uom = self._node.uom
+        self._uom = node.uom
         if isinstance(self._uom, list):
-            self._uom = self._node.uom[0]
-        self._hvac_action = None
+            self._uom = node.uom[0]
         self._hvac_mode = None
         self._fan_mode = None
-        self._temp_unit = None
         self._current_humidity = 0
         self._target_temp_low = 0
         self._target_temp_high = 0
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return ISY_SUPPORTED_FEATURES
-
-    @property
-    def precision(self) -> str:
-        """Return the precision of the system."""
-        return PRECISION_TENTHS
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        uom = self._node.aux_properties.get(PROP_UOM)
+        uom = node.aux_properties.get(PROP_UOM)
         if not uom:
-            return self.hass.config.units.temperature_unit
-        if uom.value == UOM_ISY_CELSIUS:
-            return TEMP_CELSIUS
-        if uom.value == UOM_ISY_FAHRENHEIT:
-            return TEMP_FAHRENHEIT
+            self._attr_temperature_unit = self.hass.config.units.temperature_unit
+        elif uom.value == UOM_ISY_CELSIUS:
+            self._attr_temperature_unit = TEMP_CELSIUS
+        elif uom.value == UOM_ISY_FAHRENHEIT:
+            self._attr_temperature_unit = TEMP_FAHRENHEIT
 
     @property
     def current_humidity(self) -> int | None:
@@ -141,11 +131,6 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
         return UOM_TO_STATES[uom].get(hvac_mode.value)
 
     @property
-    def hvac_modes(self) -> list[str]:
-        """Return the list of available hvac operation modes."""
-        return ISY_HVAC_MODES
-
-    @property
     def hvac_action(self) -> str | None:
         """Return the current running hvac operation if supported."""
         hvac_action = self._node.aux_properties.get(PROP_HEAT_COOL_STATE)
@@ -159,11 +144,6 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
         return convert_isy_value_to_hass(
             self._node.status, self._uom, self._node.prec, 1
         )
-
-    @property
-    def target_temperature_step(self) -> float | None:
-        """Return the supported step of target temperature."""
-        return 1.0
 
     @property
     def target_temperature(self) -> float | None:
@@ -189,11 +169,6 @@ class ISYThermostatEntity(ISYNodeEntity, ClimateEntity):
         if not target:
             return None
         return convert_isy_value_to_hass(target.value, target.uom, target.prec, 1)
-
-    @property
-    def fan_modes(self):
-        """Return the list of available fan modes."""
-        return [FAN_AUTO, FAN_ON]
 
     @property
     def fan_mode(self) -> str:

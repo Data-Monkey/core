@@ -44,6 +44,8 @@ async def async_setup_entry(
 class ISYFanEntity(ISYNodeEntity, FanEntity):
     """Representation of an ISY994 fan device."""
 
+    _attr_supported_features = SUPPORT_SET_SPEED
+
     @property
     def percentage(self) -> int | None:
         """Return the current speed percentage."""
@@ -88,11 +90,6 @@ class ISYFanEntity(ISYNodeEntity, FanEntity):
     async def async_turn_off(self, **kwargs) -> None:
         """Send the turn off command to the ISY994 fan device."""
         await self._node.turn_off()
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_SET_SPEED
 
 
 class ISYFanProgramEntity(ISYProgramEntity, FanEntity):

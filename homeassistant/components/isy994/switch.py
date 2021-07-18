@@ -61,6 +61,8 @@ class ISYSwitchEntity(ISYNodeEntity, SwitchEntity):
 class ISYSwitchProgramEntity(ISYProgramEntity, SwitchEntity):
     """A representation of an ISY994 program switch."""
 
+    _attr_icon = "mdi:script-text-outline"
+
     @property
     def is_on(self) -> bool:
         """Get whether the ISY994 switch program is on."""
@@ -75,8 +77,3 @@ class ISYSwitchProgramEntity(ISYProgramEntity, SwitchEntity):
         """Send the turn off command to the ISY994 switch program."""
         if not await self._actions.run_else():
             _LOGGER.error("Unable to turn off switch")
-
-    @property
-    def icon(self) -> str:
-        """Get the icon for programs."""
-        return "mdi:script-text-outline"  # Matches isy program icon

@@ -111,6 +111,8 @@ class ISYSensorEntity(ISYNodeEntity, SensorEntity):
 class ISYSensorVariableEntity(ISYEntity, SensorEntity):
     """Representation of an ISY994 variable as a sensor device."""
 
+    _attr_icon = "mdi:counter"
+
     def __init__(self, vname: str, vobj: object) -> None:
         """Initialize the ISY994 binary sensor program."""
         super().__init__(vobj)
@@ -130,8 +132,3 @@ class ISYSensorVariableEntity(ISYEntity, SensorEntity):
             ),
             "last_edited": self._node.last_edited,
         }
-
-    @property
-    def icon(self):
-        """Return the icon."""
-        return "mdi:counter"

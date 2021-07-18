@@ -22,6 +22,7 @@ class ISYEntity(Entity):
     """Representation of an ISY994 device."""
 
     _name: str = None
+    _attr_should_poll = False
 
     def __init__(self, node) -> None:
         """Initialize the insteon device."""
@@ -29,6 +30,9 @@ class ISYEntity(Entity):
         self._attrs = {}
         self._change_handler = None
         self._control_handler = None
+        self._attr_name = self.name or str(node.name)
+        if hasattr(node, "address"):
+            self._attr_unique_id = f"{node.isy.configuration['uuid']}_{node.address}"
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to the node change events."""
@@ -112,28 +116,11 @@ class ISYEntity(Entity):
         return device_info
 
     @property
-    def unique_id(self) -> str:
-        """Get the unique identifier of the device."""
-        if hasattr(self._node, "address"):
-            return f"{self._node.isy.configuration['uuid']}_{self._node.address}"
-        return None
-
-    @property
     def old_unique_id(self) -> str:
         """Get the old unique identifier of the device."""
         if hasattr(self._node, "address"):
             return self._node.address
         return None
-
-    @property
-    def name(self) -> str:
-        """Get the name of the device."""
-        return self._name or str(self._node.name)
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling required since we're using the subscription."""
-        return False
 
 
 class ISYNodeEntity(ISYEntity):

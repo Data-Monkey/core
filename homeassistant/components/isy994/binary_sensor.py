@@ -208,7 +208,7 @@ class ISYBinarySensorEntity(ISYNodeEntity, BinarySensorEntity):
     def __init__(self, node, force_device_class=None, unknown_state=None) -> None:
         """Initialize the ISY994 binary sensor device."""
         super().__init__(node)
-        self._device_class = force_device_class
+        self._attr_device_class = force_device_class
 
     @property
     def is_on(self) -> bool:
@@ -216,14 +216,6 @@ class ISYBinarySensorEntity(ISYNodeEntity, BinarySensorEntity):
         if self._node.status == ISY_VALUE_UNKNOWN:
             return None
         return bool(self._node.status)
-
-    @property
-    def device_class(self) -> str:
-        """Return the class of this device.
-
-        This was discovered by parsing the device type code during init
-        """
-        return self._device_class
 
 
 class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
@@ -241,11 +233,16 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
         self._negative_node = None
         self._heartbeat_device = None
         if self._node.status == ISY_VALUE_UNKNOWN:
-            self._computed_state = unknown_state
+            computed_state = unknown_state
             self._status_was_unknown = True
         else:
-            self._computed_state = bool(self._node.status)
+            computed_state = bool(self._node.status)
             self._status_was_unknown = False
+
+        if self.device_class == DEVICE_CLASS_MOISTURE:
+            self._attr_is_on = not computed_state
+        else:
+            self._attr_is_on = computed_state
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to the node and subnode event emitters."""
@@ -290,7 +287,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
         ):
             # The states disagree, therefore we cannot determine the state
             # of the sensor until we receive our first ON event.
-            self._computed_state = None
+            self._attr_is_on = None
 
     @callback
     def _async_negative_node_control_handler(self, event: object) -> None:
@@ -300,7 +297,8 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 "Sensor %s turning Off via the Negative node sending a DON command",
                 self.name,
             )
-            self._computed_state = False
+            self._attr_is_on = self.device_class == DEVICE_CLASS_MOISTURE
+
             self.async_write_ha_state()
             self._async_heartbeat()
 
@@ -317,7 +315,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 "Sensor %s turning On via the Primary node sending a DON command",
                 self.name,
             )
-            self._computed_state = True
+            self._attr_is_on = self.device_class != DEVICE_CLASS_MOISTURE
             self.async_write_ha_state()
             self._async_heartbeat()
         if event.control == CMD_OFF:
@@ -325,7 +323,7 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
                 "Sensor %s turning Off via the Primary node sending a DOF command",
                 self.name,
             )
-            self._computed_state = False
+            self._attr_is_on = self.device_class == DEVICE_CLASS_MOISTURE
             self.async_write_ha_state()
             self._async_heartbeat()
 
@@ -340,32 +338,21 @@ class ISYInsteonBinarySensorEntity(ISYBinarySensorEntity):
         update is the only way that a leak sensor's status changes without
         an accompanying Control event, so we need to watch for it.
         """
-        if self._status_was_unknown and self._computed_state is None:
-            self._computed_state = bool(self._node.status)
+        if self._status_was_unknown and self.is_on is None:
+            if self.device_class == DEVICE_CLASS_MOISTURE:
+                self._attr_is_on = not bool(self._node.status)
+            else:
+                self._attr_is_on = bool(self._node.status)
+
             self._status_was_unknown = False
             self.async_write_ha_state()
             self._async_heartbeat()
 
-    @property
-    def is_on(self) -> bool:
-        """Get whether the ISY994 binary sensor device is on.
-
-        Insteon leak sensors set their primary node to On when the state is
-        DRY, not WET, so we invert the binary state if the user indicates
-        that it is a moisture sensor.
-        """
-        if self._computed_state is None:
-            # Do this first so we don't invert None on moisture sensors
-            return None
-
-        if self.device_class == DEVICE_CLASS_MOISTURE:
-            return not self._computed_state
-
-        return self._computed_state
-
 
 class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
     """Representation of the battery state of an ISY994 sensor."""
+
+    _attr_device_class = DEVICE_CLASS_BATTERY
 
     def __init__(self, node, parent_device) -> None:
         """Initialize the ISY994 binary sensor device.
@@ -379,9 +366,8 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
         super().__init__(node)
         self._parent_device = parent_device
         self._heartbeat_timer = None
-        self._computed_state = None
         if self.state is None:
-            self._computed_state = False
+            self._attr_is_on = False
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to the node and subnode event emitters."""
@@ -409,7 +395,7 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
         is online. This mitigates the risk of false positives due to a single
         missed heartbeat event.
         """
-        self._computed_state = False
+        self._attr_is_on = False
         self._restart_timer()
         self.async_write_ha_state()
 
@@ -425,7 +411,7 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
         @callback
         def timer_elapsed(now) -> None:
             """Heartbeat missed; set state to ON to indicate dead battery."""
-            self._computed_state = True
+            self._attr_is_on = True
             self._heartbeat_timer = None
             self.async_write_ha_state()
 
@@ -446,21 +432,6 @@ class ISYBinarySensorHeartbeat(ISYNodeEntity, BinarySensorEntity):
 
         We listen directly to the Control events for this device.
         """
-
-    @property
-    def is_on(self) -> bool:
-        """Get whether the ISY994 binary sensor device is on.
-
-        Note: This method will return false if the current state is UNKNOWN
-        which occurs after a restart until the first heartbeat or control
-        parent control event is received.
-        """
-        return bool(self._computed_state)
-
-    @property
-    def device_class(self) -> str:
-        """Get the class of this device."""
-        return DEVICE_CLASS_BATTERY
 
     @property
     def extra_state_attributes(self):

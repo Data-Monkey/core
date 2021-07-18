@@ -49,6 +49,8 @@ async def async_setup_entry(
 class ISYLightEntity(ISYNodeEntity, LightEntity, RestoreEntity):
     """Representation of an ISY994 light device."""
 
+    _attr_supported_features = SUPPORT_BRIGHTNESS
+
     def __init__(self, node, restore_light_state) -> None:
         """Initialize the ISY994 light device."""
         super().__init__(node)
@@ -106,11 +108,6 @@ class ISYLightEntity(ISYNodeEntity, LightEntity, RestoreEntity):
         attribs = super().extra_state_attributes
         attribs[ATTR_LAST_BRIGHTNESS] = self._last_brightness
         return attribs
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS
 
     async def async_added_to_hass(self) -> None:
         """Restore last_brightness on restart."""
