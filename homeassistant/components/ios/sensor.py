@@ -35,75 +35,33 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class IOSSensor(SensorEntity):
     """Representation of an iOS sensor."""
 
+    _attr_should_poll = False
+
     def __init__(self, sensor_type, device_name, device):
         """Initialize the sensor."""
-        self._device_name = device_name
-        self._name = f"{device_name} {SENSOR_TYPES[sensor_type][0]}"
+        self._attr_name = f"{device_name} {SENSOR_TYPES[sensor_type][0]}"
+        self._attr_unique_id = f"{sensor_type}_{device[ios.ATTR_DEVICE_ID]}"
         self._device = device
         self.type = sensor_type
-        self._state = None
-        self._unit_of_measurement = SENSOR_TYPES[sensor_type][1]
-
-    @property
-    def device_info(self):
-        """Return information about the device."""
-        return {
+        self._attr_unit_of_measurement = SENSOR_TYPES[sensor_type][1]
+        self._attr_device_info = {
             "identifiers": {
                 (
                     ios.DOMAIN,
-                    self._device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_PERMANENT_ID],
+                    device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_PERMANENT_ID],
                 )
             },
-            "name": self._device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_NAME],
+            "name": device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_NAME],
             "manufacturer": "Apple",
-            "model": self._device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_TYPE],
-            "sw_version": self._device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_SYSTEM_VERSION],
+            "model": device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_TYPE],
+            "sw_version": device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_SYSTEM_VERSION],
         }
 
-    @property
-    def name(self):
-        """Return the name of the iOS sensor."""
-        device_name = self._device[ios.ATTR_DEVICE][ios.ATTR_DEVICE_NAME]
-        return f"{device_name} {SENSOR_TYPES[self.type][0]}"
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of this sensor."""
-        device_id = self._device[ios.ATTR_DEVICE_ID]
-        return f"{self.type}_{device_id}"
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement this sensor expresses itself in."""
-        return self._unit_of_measurement
-
-    @property
-    def extra_state_attributes(self):
-        """Return the device state attributes."""
-        device = self._device[ios.ATTR_DEVICE]
-        device_battery = self._device[ios.ATTR_BATTERY]
-        return {
-            "Battery State": device_battery[ios.ATTR_BATTERY_STATE],
-            "Battery Level": device_battery[ios.ATTR_BATTERY_LEVEL],
-            "Device Type": device[ios.ATTR_DEVICE_TYPE],
-            "Device Name": device[ios.ATTR_DEVICE_NAME],
-            "Device Version": device[ios.ATTR_DEVICE_SYSTEM_VERSION],
-        }
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        device_battery = self._device[ios.ATTR_BATTERY]
+    @callback
+    def _update(self, device):
+        """Get the latest state of the sensor."""
+        self._attr_state = device[ios.ATTR_BATTERY][self.type]
+        device_battery = device[ios.ATTR_BATTERY]
         battery_state = device_battery[ios.ATTR_BATTERY_STATE]
         battery_level = device_battery[ios.ATTR_BATTERY_LEVEL]
         charging = True
@@ -120,19 +78,24 @@ class IOSSensor(SensorEntity):
             icon_state = f"{DEFAULT_ICON_LEVEL}-unknown"
 
         if self.type == "state":
-            return icon_state
-        return icon_for_battery_level(battery_level=battery_level, charging=charging)
+            self._attr_icon = icon_state
+        else:
+            self._attr_icon = icon_for_battery_level(
+                battery_level=battery_level, charging=charging
+            )
 
-    @callback
-    def _update(self, device):
-        """Get the latest state of the sensor."""
-        self._device = device
-        self._state = self._device[ios.ATTR_BATTERY][self.type]
+        self._attr_extra_state_attributes = {
+            "Battery State": battery_state,
+            "Battery Level": battery_level,
+            "Device Type": device[ios.ATTR_DEVICE_TYPE],
+            "Device Name": device[ios.ATTR_DEVICE_NAME],
+            "Device Version": device[ios.ATTR_DEVICE_SYSTEM_VERSION],
+        }
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Added to hass so need to register to dispatch."""
-        self._state = self._device[ios.ATTR_BATTERY][self.type]
+        self._attr_state = self._device[ios.ATTR_BATTERY][self.type]
         device_id = self._device[ios.ATTR_DEVICE_ID]
         self.async_on_remove(
             async_dispatcher_connect(self.hass, f"{DOMAIN}.{device_id}", self._update)
