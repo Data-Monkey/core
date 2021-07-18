@@ -35,14 +35,23 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class KaiterraSensor(SensorEntity):
     """Implementation of a Kaittera sensor."""
 
+    _attr_should_poll = False
+
     def __init__(self, api, name, device_id, sensor):
         """Initialize the sensor."""
         self._api = api
-        self._name = f'{name} {sensor["name"]}'
+        self._attr_name = f'{name} {sensor["name"]}'
+        self._attr_unique_id = f"{device_id}_{sensor['name'].lower()}"
         self._device_id = device_id
-        self._kind = sensor["name"].lower()
         self._property = sensor["prop"]
-        self._device_class = sensor["device_class"]
+        self._attr_device_class = sensor["device_class"]
+        if self._sensor.get("units"):
+            value = self._sensor["units"].value
+            self._attr_unit_of_measurement = value
+            if value == "F":
+                self._attr_unit_of_measurement = TEMP_FAHRENHEIT
+            elif value == "C":
+                self._attr_unit_of_measurement = TEMP_CELSIUS
 
     @property
     def _sensor(self):
@@ -50,48 +59,14 @@ class KaiterraSensor(SensorEntity):
         return self._api.data.get(self._device_id, {}).get(self._property, {})
 
     @property
-    def should_poll(self):
-        """Return that the sensor should not be polled."""
-        return False
-
-    @property
     def available(self):
         """Return the availability of the sensor."""
         return self._api.data.get(self._device_id) is not None
 
     @property
-    def device_class(self):
-        """Return the device class."""
-        return self._device_class
-
-    @property
-    def name(self):
-        """Return the name."""
-        return self._name
-
-    @property
     def state(self):
         """Return the state."""
         return self._sensor.get("value")
-
-    @property
-    def unique_id(self):
-        """Return the sensor's unique id."""
-        return f"{self._device_id}_{self._kind}"
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        if not self._sensor.get("units"):
-            return None
-
-        value = self._sensor["units"].value
-
-        if value == "F":
-            return TEMP_FAHRENHEIT
-        if value == "C":
-            return TEMP_CELSIUS
-        return value
 
     async def async_added_to_hass(self):
         """Register callback."""

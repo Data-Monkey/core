@@ -27,10 +27,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class KaiterraAirQuality(AirQualityEntity):
     """Implementation of a Kaittera air quality sensor."""
 
+    _attr_should_poll = False
+
     def __init__(self, api, name, device_id):
         """Initialize the sensor."""
         self._api = api
-        self._name = f"{name} Air Quality"
+        self._attr_name = f"{name} Air Quality"
+        self._attr_unique_id = f"{device_id}_air_quality"
         self._device_id = device_id
 
     def _data(self, key):
@@ -41,19 +44,9 @@ class KaiterraAirQuality(AirQualityEntity):
         return self._api.data.get(self._device_id, {})
 
     @property
-    def should_poll(self):
-        """Return that the sensor should not be polled."""
-        return False
-
-    @property
     def available(self):
         """Return the availability of the sensor."""
         return self._api.data.get(self._device_id) is not None
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
     @property
     def air_quality_index(self):
@@ -89,11 +82,6 @@ class KaiterraAirQuality(AirQualityEntity):
     def volatile_organic_compounds(self):
         """Return the VOC (Volatile Organic Compounds) level."""
         return self._data("rtvoc")
-
-    @property
-    def unique_id(self):
-        """Return the sensor's unique id."""
-        return f"{self._device_id}_air_quality"
 
     @property
     def extra_state_attributes(self):
