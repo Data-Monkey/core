@@ -30,17 +30,9 @@ class IslamicPrayerTimeSensor(SensorEntity):
     def __init__(self, sensor_type, client):
         """Initialize the Islamic prayer time sensor."""
         self.sensor_type = sensor_type
+        self._attr_unique_id = sensor_type
         self.client = client
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return f"{self.sensor_type} {SENSOR_TYPES[self.sensor_type]}"
-
-    @property
-    def unique_id(self):
-        """Return the unique id of the entity."""
-        return self.sensor_type
+        self._attr_name = f"{sensor_type} {SENSOR_TYPES[sensor_type]}"
 
     @property
     def state(self):
