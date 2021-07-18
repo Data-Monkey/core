@@ -204,9 +204,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class ItunesDevice(MediaPlayerEntity):
     """Representation of an iTunes API instance."""
 
+    _attr_media_content_type = MEDIA_TYPE_MUSIC
+    _attr_supported_features = SUPPORT_ITUNES
+
     def __init__(self, name, host, port, use_ssl, add_entities):
         """Initialize the iTunes device."""
-        self._name = name
+        self._attr_name = name
         self._host = host
         self._port = port
         self._use_ssl = use_ssl
@@ -214,16 +217,7 @@ class ItunesDevice(MediaPlayerEntity):
 
         self.client = Itunes(self._host, self._port, self._use_ssl)
 
-        self.current_volume = None
-        self.muted = None
-        self.shuffled = None
-        self.current_title = None
-        self.current_album = None
-        self.current_artist = None
-        self.current_playlist = None
-        self.content_id = None
-
-        self.player_state = None
+        self._attr_ = None
 
         self.airplay_devices = {}
 
@@ -231,40 +225,40 @@ class ItunesDevice(MediaPlayerEntity):
 
     def update_state(self, state_hash):
         """Update all the state properties with the passed in dictionary."""
-        self.player_state = state_hash.get("player_state", None)
+        player_state = state_hash.get("player_state", None)
+        if player_state == "offline" or player_state is None:
+            self._attr_state = "offline"
+        elif player_state == "error":
+            self._attr_state = "error"
+        elif player_state == "stopped":
+            self._attr_state = STATE_IDLE
+        elif player_state == "paused":
+            self._attr_state = STATE_PAUSED
+        else:
+            self._attr_state = STATE_PLAYING
 
-        self.current_volume = state_hash.get("volume", 0)
-        self.muted = state_hash.get("muted", None)
-        self.current_title = state_hash.get("name", None)
-        self.current_album = state_hash.get("album", None)
-        self.current_artist = state_hash.get("artist", None)
-        self.current_playlist = state_hash.get("playlist", None)
-        self.content_id = state_hash.get("id", None)
+        self._attr_volume_level = state_hash.get("volume", 0) / 100.0
+        self._attr_is_volume_muted = state_hash.get("muted", None)
+        self._attr_media_title = state_hash.get("name", None)
+        self._attr_media_album_name = state_hash.get("album", None)
+        self._attr_media_artist = state_hash.get("artist", None)
+        self._attr_media_playlist = state_hash.get("playlist", None)
+        self._attr_media_content_id = state_hash.get("id", None)
 
         _shuffle = state_hash.get("shuffle", None)
-        self.shuffled = _shuffle == "songs"
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        if self.player_state == "offline" or self.player_state is None:
-            return "offline"
-
-        if self.player_state == "error":
-            return "error"
-
-        if self.player_state == "stopped":
-            return STATE_IDLE
-
-        if self.player_state == "paused":
-            return STATE_PAUSED
-
-        return STATE_PLAYING
+        self._attr_shuffle = _shuffle == "songs"
+        if (
+            player_state in (STATE_PLAYING, STATE_IDLE, STATE_PAUSED)
+            and self.media_title is not None
+        ):
+            self._attr_media_image_url = (
+                f"{self.client.artwork_url()}?id={self.media_content_id}"
+            )
+        else:
+            self._attr_media_image_url = (
+                "https://cloud.githubusercontent.com/assets/260/9829355"
+                "/33fab972-58cf-11e5-8ea2-2ca74bdaae40.png"
+            )
 
     def update(self):
         """Retrieve latest state."""
@@ -293,70 +287,6 @@ class ItunesDevice(MediaPlayerEntity):
         if new_devices:
             self._add_entities(new_devices)
 
-    @property
-    def is_volume_muted(self):
-        """Boolean if volume is currently muted."""
-        return self.muted
-
-    @property
-    def volume_level(self):
-        """Volume level of the media player (0..1)."""
-        return self.current_volume / 100.0
-
-    @property
-    def media_content_id(self):
-        """Content ID of current playing media."""
-        return self.content_id
-
-    @property
-    def media_content_type(self):
-        """Content type of current playing media."""
-        return MEDIA_TYPE_MUSIC
-
-    @property
-    def media_image_url(self):
-        """Image url of current playing media."""
-        if (
-            self.player_state in (STATE_PLAYING, STATE_IDLE, STATE_PAUSED)
-            and self.current_title is not None
-        ):
-            return f"{self.client.artwork_url()}?id={self.content_id}"
-
-        return (
-            "https://cloud.githubusercontent.com/assets/260/9829355"
-            "/33fab972-58cf-11e5-8ea2-2ca74bdaae40.png"
-        )
-
-    @property
-    def media_title(self):
-        """Title of current playing media."""
-        return self.current_title
-
-    @property
-    def media_artist(self):
-        """Artist of current playing media (Music track only)."""
-        return self.current_artist
-
-    @property
-    def media_album_name(self):
-        """Album of current playing media (Music track only)."""
-        return self.current_album
-
-    @property
-    def media_playlist(self):
-        """Title of the currently playing playlist."""
-        return self.current_playlist
-
-    @property
-    def shuffle(self):
-        """Boolean if shuffle is enabled."""
-        return self.shuffled
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        return SUPPORT_ITUNES
-
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
         response = self.client.set_volume(int(volume * 100))
@@ -384,7 +314,7 @@ class ItunesDevice(MediaPlayerEntity):
 
     def media_next_track(self):
         """Send media_next command to media player."""
-        response = self.client.next()
+        response = self.client.next()  # pylint: disable=not-callable
         self.update_state(response)
 
     def media_previous_track(self):
@@ -407,84 +337,33 @@ class ItunesDevice(MediaPlayerEntity):
 class AirPlayDevice(MediaPlayerEntity):
     """Representation an AirPlay device via an iTunes API instance."""
 
+    _attr_media_content_type = MEDIA_TYPE_MUSIC
+    _attr_supported_features = SUPPORT_AIRPLAY
+
     def __init__(self, device_id, client):
         """Initialize the AirPlay device."""
         self._id = device_id
         self.client = client
-        self.device_name = "AirPlay"
-        self.kind = None
-        self.active = False
-        self.selected = False
-        self.volume = 0
-        self.supports_audio = False
-        self.supports_video = False
-        self.player_state = None
+        self._attr_name = "AirPlay"
+        self._attr_icon = "mdi:volume-off"
+        self._attr_volume_level = 0
 
     def update_state(self, state_hash):
         """Update all the state properties with the passed in dictionary."""
-        if "player_state" in state_hash:
-            self.player_state = state_hash.get("player_state", None)
-
         if "name" in state_hash:
-            name = state_hash.get("name", "")
-            self.device_name = f"{name} AirTunes Speaker".strip()
-
-        if "kind" in state_hash:
-            self.kind = state_hash.get("kind", None)
-
-        if "active" in state_hash:
-            self.active = state_hash.get("active", None)
+            self._attr_name = f"{state_hash.get('name', '')} AirTunes Speaker".strip()
 
         if "selected" in state_hash:
-            self.selected = state_hash.get("selected", None)
+            selected = state_hash.get("selected", None)
+
+        self._attr_state = STATE_ON if selected is True else STATE_OFF
+        self._attr_icon = "mdi:volume-high" if selected is True else "mdi:volume-off"
 
         if "sound_volume" in state_hash:
-            self.volume = state_hash.get("sound_volume", 0)
-
-        if "supports_audio" in state_hash:
-            self.supports_audio = state_hash.get("supports_audio", None)
-
-        if "supports_video" in state_hash:
-            self.supports_video = state_hash.get("supports_video", None)
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self.device_name
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend, if any."""
-        if self.selected is True:
-            return "mdi:volume-high"
-
-        return "mdi:volume-off"
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        if self.selected is True:
-            return STATE_ON
-
-        return STATE_OFF
+            self._attr_volume_level = float(state_hash.get("sound_volume", 0)) / 100.0
 
     def update(self):
         """Retrieve latest state."""
-
-    @property
-    def volume_level(self):
-        """Return the volume."""
-        return float(self.volume) / 100.0
-
-    @property
-    def media_content_type(self):
-        """Flag of media content that is supported."""
-        return MEDIA_TYPE_MUSIC
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        return SUPPORT_AIRPLAY
 
     def set_volume_level(self, volume):
         """Set volume level, range 0..1."""
