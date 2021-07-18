@@ -84,10 +84,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class InsteonClimateEntity(InsteonEntity, ClimateEntity):
     """A Class for an Insteon climate entity."""
 
-    @property
-    def supported_features(self):
-        """Return the supported features for this entity."""
-        return SUPPORTED_FEATURES
+    _attr_fan_modes = list(FAN_MODES.values())
+    _attr_hvac_modes = list(HVAC_MODES.values())
+    _attr_min_humidity = 1
+    _attr_supported_features = SUPPORTED_FEATURES
 
     @property
     def temperature_unit(self) -> str:
@@ -105,11 +105,6 @@ class InsteonClimateEntity(InsteonEntity, ClimateEntity):
     def hvac_mode(self) -> str:
         """Return hvac operation ie. heat, cool mode."""
         return HVAC_MODES[self._insteon_device.groups[SYSTEM_MODE].value]
-
-    @property
-    def hvac_modes(self) -> list[str]:
-        """Return the list of available hvac operation modes."""
-        return list(HVAC_MODES.values())
 
     @property
     def current_temperature(self) -> float | None:
@@ -145,22 +140,12 @@ class InsteonClimateEntity(InsteonEntity, ClimateEntity):
         return FAN_MODES[self._insteon_device.groups[FAN_MODE].value]
 
     @property
-    def fan_modes(self) -> list[str] | None:
-        """Return the list of available fan modes."""
-        return list(FAN_MODES.values())
-
-    @property
     def target_humidity(self) -> int | None:
         """Return the humidity we try to reach."""
         high = self._insteon_device.groups[HUMIDITY_HIGH].value
         low = self._insteon_device.groups[HUMIDITY_LOW].value
         # May not be loaded yet so return a default if required
         return (high + low) / 2 if high and low else None
-
-    @property
-    def min_humidity(self) -> int:
-        """Return the minimum humidity."""
-        return 1
 
     @property
     def hvac_action(self) -> str | None:

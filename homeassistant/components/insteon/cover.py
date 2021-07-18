@@ -37,6 +37,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class InsteonCoverEntity(InsteonEntity, CoverEntity):
     """A Class for an Insteon cover entity."""
 
+    _attr_supported_features = SUPPORTED_FEATURES
+
     @property
     def current_cover_position(self):
         """Return the current cover position."""
@@ -45,11 +47,6 @@ class InsteonCoverEntity(InsteonEntity, CoverEntity):
         else:
             pos = 0
         return int(math.ceil(pos * 100 / 255))
-
-    @property
-    def supported_features(self):
-        """Return the supported features for this entity."""
-        return SUPPORTED_FEATURES
 
     @property
     def is_closed(self):

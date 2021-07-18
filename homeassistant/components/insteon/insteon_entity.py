@@ -28,19 +28,36 @@ _LOGGER = logging.getLogger(__name__)
 class InsteonEntity(Entity):
     """INSTEON abstract base entity."""
 
+    _attr_should_poll = False
+
     def __init__(self, device, group):
         """Initialize the INSTEON binary sensor."""
         self._insteon_device_group = device.groups[group]
         self._insteon_device = device
+        description = device.description
+        if description is None:
+            description = "Unknown Device"
+        extension = self._get_label()
+        if extension:
+            extension = f" {extension}"
+        self._attr_name = f"{description} {device.address}{extension}"
+
+        if self._insteon_device_group.group == 0x01:
+            self._attr_unique_id = device.id
+        else:
+            self._attr_unique_id = f"{device.id}_{self._insteon_device_group.group}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, str(device.address))},
+            "name": f"{device.description} {device.address}",
+            "model": f"{device.model} ({device.cat!r}, 0x{device.subcat:02x})",
+            "sw_version": f"{device.firmware:02x} Engine Version: {device.engine_version}",
+            "manufacturer": "Smart Home",
+            "via_device": (DOMAIN, str(devices.modem.address)),
+        }
 
     def __hash__(self):
         """Return the hash of the Insteon Entity."""
         return hash(self._insteon_device)
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
 
     @property
     def address(self):
@@ -52,45 +69,6 @@ class InsteonEntity(Entity):
         """Return the INSTEON group that the entity responds to."""
         return self._insteon_device_group.group
 
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        if self._insteon_device_group.group == 0x01:
-            uid = self._insteon_device.id
-        else:
-            uid = f"{self._insteon_device.id}_{self._insteon_device_group.group}"
-        return uid
-
-    @property
-    def name(self):
-        """Return the name of the node (used for Entity_ID)."""
-        # Set a base description
-        description = self._insteon_device.description
-        if description is None:
-            description = "Unknown Device"
-        # Get an extension label if there is one
-        extension = self._get_label()
-        if extension:
-            extension = f" {extension}"
-        return f"{description} {self._insteon_device.address}{extension}"
-
-    @property
-    def extra_state_attributes(self):
-        """Provide attributes for display on device card."""
-        return {"insteon_address": self.address, "insteon_group": self.group}
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, str(self._insteon_device.address))},
-            "name": f"{self._insteon_device.description} {self._insteon_device.address}",
-            "model": f"{self._insteon_device.model} ({self._insteon_device.cat!r}, 0x{self._insteon_device.subcat:02x})",
-            "sw_version": f"{self._insteon_device.firmware:02x} Engine Version: {self._insteon_device.engine_version}",
-            "manufacturer": "Smart Home",
-            "via_device": (DOMAIN, str(devices.modem.address)),
-        }
-
     @callback
     def async_entity_update(self, name, address, value, group):
         """Receive notification from transport that new data exists."""
@@ -100,6 +78,10 @@ class InsteonEntity(Entity):
             group,
             value,
         )
+        self._attr_extra_state_attributes = {
+            "insteon_address": address,
+            "insteon_group": group,
+        }
         self.async_write_ha_state()
 
     async def async_added_to_hass(self):

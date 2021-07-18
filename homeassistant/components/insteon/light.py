@@ -34,6 +34,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class InsteonDimmerEntity(InsteonEntity, LightEntity):
     """A Class for an Insteon light entity."""
 
+    _attr_supported_features = SUPPORT_BRIGHTNESS
+
     @property
     def brightness(self):
         """Return the brightness of this light between 0..255."""
@@ -43,11 +45,6 @@ class InsteonDimmerEntity(InsteonEntity, LightEntity):
     def is_on(self):
         """Return the boolean response if the node is on."""
         return bool(self.brightness)
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS
 
     async def async_turn_on(self, **kwargs):
         """Turn light on."""

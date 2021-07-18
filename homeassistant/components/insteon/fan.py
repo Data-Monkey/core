@@ -38,17 +38,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class InsteonFanEntity(InsteonEntity, FanEntity):
     """An INSTEON fan entity."""
 
+    _attr_supported_features = SUPPORT_SET_SPEED
+
     @property
     def percentage(self) -> int:
         """Return the current speed percentage."""
         if self._insteon_device_group.value is None:
             return None
         return ranged_value_to_percentage(SPEED_RANGE, self._insteon_device_group.value)
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_SET_SPEED
 
     @property
     def speed_count(self) -> int:
