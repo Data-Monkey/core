@@ -28,13 +28,8 @@ class KiraRemote(Entity):
     def __init__(self, name, kira):
         """Initialize KiraRemote class."""
         _LOGGER.debug("KiraRemote device init started for: %s", name)
-        self._name = name
+        self._attr_name = name
         self._kira = kira
-
-    @property
-    def name(self):
-        """Return the Kira device's name."""
-        return self._name
 
     def update(self):
         """No-op."""
