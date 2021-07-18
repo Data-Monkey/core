@@ -56,31 +56,22 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class IssBinarySensor(BinarySensorEntity):
     """Implementation of the ISS binary sensor."""
 
+    _attr_device_class = DEFAULT_DEVICE_CLASS
+
     def __init__(self, iss_data, name, show):
         """Initialize the sensor."""
         self.iss_data = iss_data
-        self._state = None
-        self._name = name
+        self._attr_name = name
         self._show_on_map = show
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
     @property
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self.iss_data.is_above if self.iss_data else False
 
-    @property
-    def device_class(self):
-        """Return the class of this sensor."""
-        return DEFAULT_DEVICE_CLASS
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
+    def update(self):
+        """Get the latest data from ISS API and updates the states."""
+        self.iss_data.update()
         if self.iss_data:
             attrs = {
                 ATTR_ISS_NUMBER_PEOPLE_SPACE: self.iss_data.number_of_people_in_space,
@@ -92,11 +83,7 @@ class IssBinarySensor(BinarySensorEntity):
             else:
                 attrs["long"] = self.iss_data.position.get("longitude")
                 attrs["lat"] = self.iss_data.position.get("latitude")
-            return attrs
-
-    def update(self):
-        """Get the latest data from ISS API and updates the states."""
-        self.iss_data.update()
+            self._attr_extra_state_attributes = attrs
 
 
 class IssData:
