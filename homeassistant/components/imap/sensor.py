@@ -64,19 +64,19 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class ImapSensor(SensorEntity):
     """Representation of an IMAP sensor."""
 
+    _attr_icon = ICON
+
     def __init__(self, name, user, password, server, port, charset, folder, search):
         """Initialize the sensor."""
-        self._name = name or user
+        self._attr_name = name or user
         self._user = user
         self._password = password
         self._server = server
         self._port = port
         self._charset = charset
         self._folder = folder
-        self._email_count = None
         self._search = search
         self._connection = None
-        self._does_push = None
         self._idle_loop_task = None
 
     async def async_added_to_hass(self):
@@ -85,29 +85,9 @@ class ImapSensor(SensorEntity):
             self._idle_loop_task = self.hass.loop.create_task(self.idle_loop())
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return ICON
-
-    @property
-    def state(self):
-        """Return the number of emails found."""
-        return self._email_count
-
-    @property
     def available(self):
         """Return the availability of the device."""
         return self._connection is not None
-
-    @property
-    def should_poll(self):
-        """Return if polling is needed."""
-        return not self._does_push
 
     async def connection(self):
         """Return a connection to the server, establishing it if necessary."""
@@ -117,7 +97,7 @@ class ImapSensor(SensorEntity):
                 await self._connection.wait_hello_from_server()
                 await self._connection.login(self._user, self._password)
                 await self._connection.select(self._folder)
-                self._does_push = self._connection.has_capability("IDLE")
+                self._attr_should_poll = not self._connection.has_capability("IDLE")
             except (AioImapException, asyncio.TimeoutError):
                 self._connection = None
 
@@ -158,7 +138,7 @@ class ImapSensor(SensorEntity):
             )
 
             if result == "OK":
-                self._email_count = len(lines[0].split())
+                self._attr_state = len(lines[0].split())
             else:
                 _LOGGER.error(
                     "Can't parse IMAP server response to search '%s':  %s / %s",
