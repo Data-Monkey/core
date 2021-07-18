@@ -11,8 +11,6 @@ from homeassistant.const import (
     ATTR_LONGITUDE,
     CONF_PASSWORD,
     CONF_USERNAME,
-    STATE_LOCKED,
-    STATE_UNLOCKED,
 )
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
@@ -52,10 +50,11 @@ class KiwiLock(LockEntity):
 
     def __init__(self, kiwi_lock, client):
         """Initialize the lock."""
-        self._sensor = kiwi_lock
+        specifier = kiwi_lock["address"].get("specifier")
+        self._attr_name = kiwi_lock.get("name") or specifier
         self._client = client
         self.lock_id = kiwi_lock["sensor_id"]
-        self._state = STATE_LOCKED
+        self._attr_is_locked = True
 
         address = kiwi_lock.get("address")
         address.update(
@@ -65,35 +64,18 @@ class KiwiLock(LockEntity):
             }
         )
 
-        self._device_attrs = {
-            ATTR_ID: self.lock_id,
+        self._attr_extra_state_attributes = {
+            ATTR_ID: kiwi_lock["sensor_id"],
             ATTR_TYPE: kiwi_lock.get("hardware_type"),
             ATTR_PERMISSION: kiwi_lock.get("highest_permission"),
             ATTR_CAN_INVITE: kiwi_lock.get("can_invite"),
             **address,
         }
 
-    @property
-    def name(self):
-        """Return the name of the lock."""
-        name = self._sensor.get("name")
-        specifier = self._sensor["address"].get("specifier")
-        return name or specifier
-
-    @property
-    def is_locked(self):
-        """Return true if lock is locked."""
-        return self._state == STATE_LOCKED
-
-    @property
-    def extra_state_attributes(self):
-        """Return the device specific state attributes."""
-        return self._device_attrs
-
     @callback
     def clear_unlock_state(self, _):
         """Clear unlock state automatically."""
-        self._state = STATE_LOCKED
+        self._attr_is_locked = True
         self.async_write_ha_state()
 
     def unlock(self, **kwargs):
@@ -104,7 +86,7 @@ class KiwiLock(LockEntity):
         except KiwiException:
             _LOGGER.error("Failed to open door")
         else:
-            self._state = STATE_UNLOCKED
+            self._attr_is_locked = False
             self.hass.add_job(
                 async_call_later,
                 self.hass,
