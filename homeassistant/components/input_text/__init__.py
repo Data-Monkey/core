@@ -190,11 +190,16 @@ class InputTextStorageCollection(collection.StorageCollection):
 class InputText(RestoreEntity):
     """Represent a text box."""
 
+    _attr_should_poll = False
+
     def __init__(self, config: dict) -> None:
         """Initialize a text input."""
         self._config = config
+        self._attr_icon = config.get(CONF_ICON)
+        self._attr_unique_id = config[CONF_ID]
         self.editable = True
-        self._current_value = config.get(CONF_INITIAL)
+        self._attr_unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT)
+        self._attr_state = config.get(CONF_INITIAL)
 
     @classmethod
     def from_yaml(cls, config: dict) -> InputText:
@@ -205,19 +210,9 @@ class InputText(RestoreEntity):
         return input_text
 
     @property
-    def should_poll(self):
-        """If entity should be polled."""
-        return False
-
-    @property
     def name(self):
         """Return the name of the text input entity."""
         return self._config.get(CONF_NAME)
-
-    @property
-    def icon(self):
-        """Return the icon to be used for this entity."""
-        return self._config.get(CONF_ICON)
 
     @property
     def _maximum(self) -> int:
@@ -228,21 +223,6 @@ class InputText(RestoreEntity):
     def _minimum(self) -> int:
         """Return min len of the text."""
         return self._config[CONF_MIN]
-
-    @property
-    def state(self):
-        """Return the state of the component."""
-        return self._current_value
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._config.get(CONF_UNIT_OF_MEASUREMENT)
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return unique id for the entity."""
-        return self._config[CONF_ID]
 
     @property
     def extra_state_attributes(self):
@@ -258,7 +238,7 @@ class InputText(RestoreEntity):
     async def async_added_to_hass(self):
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
-        if self._current_value is not None:
+        if self.state is not None:
             return
 
         state = await self.async_get_last_state()
@@ -266,7 +246,7 @@ class InputText(RestoreEntity):
 
         # Check against None because value can be 0
         if value is not None and self._minimum <= len(value) <= self._maximum:
-            self._current_value = value
+            self._attr_state = value
 
     async def async_set_value(self, value):
         """Select new value."""
@@ -278,7 +258,7 @@ class InputText(RestoreEntity):
                 self._maximum,
             )
             return
-        self._current_value = value
+        self._attr_state = value
         self.async_write_ha_state()
 
     async def async_update_config(self, config: dict) -> None:
