@@ -56,20 +56,11 @@ class IotaDevice(Entity):
 
     def __init__(self, name, seed, iri, is_testnet=False):
         """Initialise the IOTA device."""
-        self._name = name
+        self._attr_name = name
         self._seed = seed
         self.iri = iri
         self.is_testnet = is_testnet
-
-    @property
-    def name(self):
-        """Return the default name of the device."""
-        return self._name
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the device."""
-        return {CONF_WALLET_NAME: self._name}
+        self._attr_extra_state_attributes = {CONF_WALLET_NAME: name}
 
     @property
     def api(self):
