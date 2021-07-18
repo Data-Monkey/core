@@ -196,11 +196,17 @@ class NumberStorageCollection(collection.StorageCollection):
 class InputNumber(RestoreEntity):
     """Representation of a slider."""
 
+    _attr_should_poll = False
+
     def __init__(self, config: dict) -> None:
         """Initialize an input number."""
         self._config = config
         self.editable = True
-        self._current_value = config.get(CONF_INITIAL)
+        self._attr_state = config.get(CONF_INITIAL)
+        self._attr_name = config.get(CONF_NAME)
+        self._attr_icon = config.get(CONF_ICON)
+        self._attr_unique_id = config[CONF_ID]
+        self._attr_unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT)
 
     @classmethod
     def from_yaml(cls, config: dict) -> InputNumber:
@@ -209,11 +215,6 @@ class InputNumber(RestoreEntity):
         input_num.entity_id = f"{DOMAIN}.{config[CONF_ID]}"
         input_num.editable = False
         return input_num
-
-    @property
-    def should_poll(self):
-        """If entity should be polled."""
-        return False
 
     @property
     def _minimum(self) -> float:
@@ -226,34 +227,9 @@ class InputNumber(RestoreEntity):
         return self._config[CONF_MAX]
 
     @property
-    def name(self):
-        """Return the name of the input slider."""
-        return self._config.get(CONF_NAME)
-
-    @property
-    def icon(self):
-        """Return the icon to be used for this entity."""
-        return self._config.get(CONF_ICON)
-
-    @property
-    def state(self):
-        """Return the state of the component."""
-        return self._current_value
-
-    @property
     def _step(self) -> int:
         """Return entity's increment/decrement step."""
         return self._config[CONF_STEP]
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._config.get(CONF_UNIT_OF_MEASUREMENT)
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return unique id of the entity."""
-        return self._config[CONF_ID]
 
     @property
     def extra_state_attributes(self):
@@ -270,7 +246,7 @@ class InputNumber(RestoreEntity):
     async def async_added_to_hass(self):
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
-        if self._current_value is not None:
+        if self.state is not None:
             return
 
         state = await self.async_get_last_state()
@@ -278,9 +254,9 @@ class InputNumber(RestoreEntity):
 
         # Check against None because value can be 0
         if value is not None and self._minimum <= value <= self._maximum:
-            self._current_value = value
+            self._attr_state = value
         else:
-            self._current_value = self._minimum
+            self._attr_state = self._minimum
 
     async def async_set_value(self, value):
         """Set new value."""
@@ -291,21 +267,21 @@ class InputNumber(RestoreEntity):
                 f"Invalid value for {self.entity_id}: {value} (range {self._minimum} - {self._maximum})"
             )
 
-        self._current_value = num_value
+        self._attr_state = num_value
         self.async_write_ha_state()
 
     async def async_increment(self):
         """Increment value."""
-        await self.async_set_value(min(self._current_value + self._step, self._maximum))
+        await self.async_set_value(min(self.state + self._step, self._maximum))
 
     async def async_decrement(self):
         """Decrement value."""
-        await self.async_set_value(max(self._current_value - self._step, self._minimum))
+        await self.async_set_value(max(self.state - self._step, self._minimum))
 
     async def async_update_config(self, config: dict) -> None:
         """Handle when the config is updated."""
         self._config = config
         # just in case min/max values changed
-        self._current_value = min(self._current_value, self._maximum)
-        self._current_value = max(self._current_value, self._minimum)
+        self._attr_state = min(self.state, self._maximum)
+        self._attr_state = max(self.state, self._minimum)
         self.async_write_ha_state()
