@@ -210,14 +210,9 @@ class ItunesDevice(MediaPlayerEntity):
     def __init__(self, name, host, port, use_ssl, add_entities):
         """Initialize the iTunes device."""
         self._attr_name = name
-        self._host = host
-        self._port = port
-        self._use_ssl = use_ssl
         self._add_entities = add_entities
 
-        self.client = Itunes(self._host, self._port, self._use_ssl)
-
-        self._attr_ = None
+        self.client = Itunes(host, port, use_ssl)
 
         self.airplay_devices = {}
 
