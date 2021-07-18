@@ -86,6 +86,9 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class IntegrationSensor(RestoreEntity, SensorEntity):
     """Representation of an integration sensor."""
 
+    _attr_icon = ICON
+    _attr_should_poll = False
+
     def __init__(
         self,
         source_entity,
@@ -100,18 +103,20 @@ class IntegrationSensor(RestoreEntity, SensorEntity):
         self._sensor_source_id = source_entity
         self._round_digits = round_digits
         self._state = 0
+        self._attr_state = round(0, round_digits)
         self._method = integration_method
 
-        self._name = name if name is not None else f"{source_entity} integral"
+        self._attr_name = name if name is not None else f"{source_entity} integral"
 
         if unit_of_measurement is None:
             self._unit_template = (
                 f"{'' if unit_prefix is None else unit_prefix}{{}}{unit_time}"
             )
             # we postpone the definition of unit_of_measurement to later
-            self._unit_of_measurement = None
         else:
-            self._unit_of_measurement = unit_of_measurement
+            self._attr_unit_of_measurement = unit_of_measurement
+
+        self._attr_extra_state_attributes = {ATTR_SOURCE_ID: source_entity}
 
         self._unit_prefix = UNIT_PREFIXES[unit_prefix]
         self._unit_time = UNIT_TIME[unit_time]
@@ -123,6 +128,7 @@ class IntegrationSensor(RestoreEntity, SensorEntity):
         if state:
             try:
                 self._state = Decimal(state.state)
+                self._attr_state = round(self._state, self._round_digits)
             except ValueError as err:
                 _LOGGER.warning("Could not restore last state: %s", err)
 
@@ -138,9 +144,9 @@ class IntegrationSensor(RestoreEntity, SensorEntity):
             ):
                 return
 
-            if self._unit_of_measurement is None:
+            if self.unit_of_measurement is None:
                 unit = new_state.attributes.get(ATTR_UNIT_OF_MEASUREMENT)
-                self._unit_of_measurement = self._unit_template.format(
+                self._attr_unit_of_measurement = self._unit_template.format(
                     "" if unit is None else unit
                 )
 
@@ -174,38 +180,9 @@ class IntegrationSensor(RestoreEntity, SensorEntity):
                 _LOGGER.error("Could not calculate integral: %s", err)
             else:
                 self._state += integral
+                self._attr_state = round(self._state, self._round_digits)
                 self.async_write_ha_state()
 
         async_track_state_change_event(
             self.hass, [self._sensor_source_id], calc_integration
         )
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return round(self._state, self._round_digits)
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._unit_of_measurement
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        return {ATTR_SOURCE_ID: self._sensor_source_id}
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return ICON
