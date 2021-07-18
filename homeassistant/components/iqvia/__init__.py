@@ -101,15 +101,15 @@ async def async_unload_entry(hass, entry):
 class IQVIAEntity(CoordinatorEntity, SensorEntity):
     """Define a base IQVIA entity."""
 
+    _attr_extra_state_attributes = {ATTR_ATTRIBUTION: DEFAULT_ATTRIBUTION}
+    _attr_unit_of_measurement = "index"
+
     def __init__(self, coordinator, entry, sensor_type, name, icon):
         """Initialize."""
         super().__init__(coordinator)
-
-        self._attr_extra_state_attributes = {ATTR_ATTRIBUTION: DEFAULT_ATTRIBUTION}
         self._attr_icon = icon
         self._attr_name = name
         self._attr_unique_id = f"{entry.data[CONF_ZIP_CODE]}_{sensor_type}"
-        self._attr_unit_of_measurement = "index"
         self._entry = entry
         self._type = sensor_type
 
