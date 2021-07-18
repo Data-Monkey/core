@@ -54,11 +54,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     irish_rail = IrishRailRTPI()
     data = IrishRailTransportData(irish_rail, station, direction, destination, stops_at)
     add_entities(
-        [
-            IrishRailTransportSensor(
-                data, station, direction, destination, stops_at, name
-            )
-        ],
+        [IrishRailTransportSensor(data, station, name)],
         True,
     )
 
@@ -66,71 +62,44 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class IrishRailTransportSensor(SensorEntity):
     """Implementation of an irish rail public transport sensor."""
 
-    def __init__(self, data, station, direction, destination, stops_at, name):
+    _attr_icon = ICON
+    _attr_unit_of_measurement = TIME_MINUTES
+
+    def __init__(self, data, station, name):
         """Initialize the sensor."""
         self.data = data
         self._station = station
-        self._direction = direction
-        self._direction = direction
-        self._stops_at = stops_at
-        self._name = name
-        self._state = None
-        self._times = []
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        if self._times:
-            next_up = "None"
-            if len(self._times) > 1:
-                next_up = (
-                    f"{self._times[1][ATTR_ORIGIN]} to "
-                    f"{self._times[1][ATTR_DESTINATION]} in "
-                    f"{self._times[1][ATTR_DUE_IN]}"
-                )
-
-            return {
-                ATTR_ATTRIBUTION: ATTRIBUTION,
-                ATTR_STATION: self._station,
-                ATTR_ORIGIN: self._times[0][ATTR_ORIGIN],
-                ATTR_DESTINATION: self._times[0][ATTR_DESTINATION],
-                ATTR_DUE_IN: self._times[0][ATTR_DUE_IN],
-                ATTR_DUE_AT: self._times[0][ATTR_DUE_AT],
-                ATTR_EXPECT_AT: self._times[0][ATTR_EXPECT_AT],
-                ATTR_DIRECTION: self._times[0][ATTR_DIRECTION],
-                ATTR_STOPS_AT: self._times[0][ATTR_STOPS_AT],
-                ATTR_NEXT_UP: next_up,
-                ATTR_TRAIN_TYPE: self._times[0][ATTR_TRAIN_TYPE],
-            }
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit this state is expressed in."""
-        return TIME_MINUTES
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return ICON
+        self._attr_name = name
 
     def update(self):
         """Get the latest data and update the states."""
         self.data.update()
-        self._times = self.data.info
-        if self._times:
-            self._state = self._times[0][ATTR_DUE_IN]
+        times = self.data.info
+        if times:
+            self._attr_state = times[0][ATTR_DUE_IN]
+            next_up = "None"
+            if len(times) > 1:
+                next_up = (
+                    f"{times[1][ATTR_ORIGIN]} to "
+                    f"{times[1][ATTR_DESTINATION]} in "
+                    f"{times[1][ATTR_DUE_IN]}"
+                )
+
+            self._attr_extra_state_attributes = {
+                ATTR_ATTRIBUTION: ATTRIBUTION,
+                ATTR_STATION: self._station,
+                ATTR_ORIGIN: times[0][ATTR_ORIGIN],
+                ATTR_DESTINATION: times[0][ATTR_DESTINATION],
+                ATTR_DUE_IN: times[0][ATTR_DUE_IN],
+                ATTR_DUE_AT: times[0][ATTR_DUE_AT],
+                ATTR_EXPECT_AT: times[0][ATTR_EXPECT_AT],
+                ATTR_DIRECTION: times[0][ATTR_DIRECTION],
+                ATTR_STOPS_AT: times[0][ATTR_STOPS_AT],
+                ATTR_NEXT_UP: next_up,
+                ATTR_TRAIN_TYPE: times[0][ATTR_TRAIN_TYPE],
+            }
         else:
-            self._state = None
+            self._attr_state = None
 
 
 class IrishRailTransportData:
