@@ -34,7 +34,6 @@ ALLOWED_IGNORE_VIOLATIONS = {
     ("home_connect", "config_flow.py"),
     ("huawei_lte", "config_flow.py"),
     ("ifttt", "config_flow.py"),
-    ("ios", "config_flow.py"),
     ("iqvia", "config_flow.py"),
     ("knx", "scene.py"),
     ("konnected", "config_flow.py"),

@@ -485,7 +485,9 @@ omit =
     homeassistant/components/insteon/utils.py
     homeassistant/components/incomfort/*
     homeassistant/components/intesishome/*
-    homeassistant/components/ios/*
+    homeassistant/components/ios/__init__.py
+    homeassistant/components/ios/notify.py
+    homeassistant/components/ios/sensor.py
     homeassistant/components/iota/*
     homeassistant/components/iperf3/*
     homeassistant/components/iqvia/*
