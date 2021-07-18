@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from aiohttp import ClientResponseError
 
@@ -35,63 +34,21 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class IncomfortWaterHeater(IncomfortEntity, WaterHeaterEntity):
     """Representation of an InComfort/Intouch water_heater device."""
 
+    _attr_icon = "mdi:thermometer-lines"
+    _attr_max_temp = 80.0
+    _attr_min_temp = 30.0
+    _attr_name = "Boiler"
+    _attr_supported_features = TEMP_CELSIUS
+
     def __init__(self, client, heater) -> None:
         """Initialize the water_heater device."""
         super().__init__()
 
-        self._unique_id = f"{heater.serial_no}"
+        self._attr_unique_id = f"{heater.serial_no}"
         self.entity_id = f"{WATER_HEATER_DOMAIN}.{DOMAIN}"
-        self._name = "Boiler"
 
         self._client = client
         self._heater = heater
-
-    @property
-    def icon(self) -> str:
-        """Return the icon of the water_heater device."""
-        return "mdi:thermometer-lines"
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the device state attributes."""
-        return {k: v for k, v in self._heater.status.items() if k in HEATER_ATTRS}
-
-    @property
-    def current_temperature(self) -> float:
-        """Return the current temperature."""
-        if self._heater.is_tapping:
-            return self._heater.tap_temp
-        if self._heater.is_pumping:
-            return self._heater.heater_temp
-        return max(self._heater.heater_temp, self._heater.tap_temp)
-
-    @property
-    def min_temp(self) -> float:
-        """Return max valid temperature that can be set."""
-        return 80.0
-
-    @property
-    def max_temp(self) -> float:
-        """Return max valid temperature that can be set."""
-        return 30.0
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        return TEMP_CELSIUS
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return 0
-
-    @property
-    def current_operation(self) -> str:
-        """Return the current operation mode."""
-        if self._heater.is_failed:
-            return f"Fault code: {self._heater.fault_code}"
-
-        return self._heater.display_text
 
     async def async_update(self) -> None:
         """Get the latest state data from the gateway."""
@@ -103,3 +60,19 @@ class IncomfortWaterHeater(IncomfortEntity, WaterHeaterEntity):
 
         else:
             async_dispatcher_send(self.hass, DOMAIN)
+
+        self._attr_extra_state_attributes = {
+            k: v for k, v in self._heater.status.items() if k in HEATER_ATTRS
+        }
+        if self._heater.is_tapping:
+            self._attr_current_temperature = self._heater.tap_temp
+        elif self._heater.is_pumping:
+            self._attr_current_temperature = self._heater.heater_temp
+        else:
+            self._attr_current_temperature = max(
+                self._heater.heater_temp, self._heater.tap_temp
+            )
+        if self._heater.is_failed:
+            self._attr_current_operation = f"Fault code: {self._heater.fault_code}"
+        else:
+            self._attr_current_operation = self._heater.display_text

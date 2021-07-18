@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 
-from . import DOMAIN, IncomfortChild
+from . import DOMAIN, IncomfortEntity
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -22,16 +22,17 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     async_add_entities([IncomfortFailed(client, h) for h in heaters])
 
 
-class IncomfortFailed(IncomfortChild, BinarySensorEntity):
+class IncomfortFailed(IncomfortEntity, BinarySensorEntity):
     """Representation of an InComfort Failed sensor."""
+
+    _attr_name = "Boiler Fault"
 
     def __init__(self, client, heater) -> None:
         """Initialize the binary sensor."""
         super().__init__()
 
-        self._unique_id = f"{heater.serial_no}_failed"
+        self._attr_unique_id = f"{heater.serial_no}_failed"
         self.entity_id = f"{BINARY_SENSOR_DOMAIN}.{DOMAIN}_failed"
-        self._name = "Boiler Fault"
 
         self._client = client
         self._heater = heater

@@ -12,7 +12,7 @@ from homeassistant.const import (
 )
 from homeassistant.util import slugify
 
-from . import DOMAIN, IncomfortChild
+from . import DOMAIN, IncomfortEntity
 
 INCOMFORT_HEATER_TEMP = "CV Temp"
 INCOMFORT_PRESSURE = "CV Pressure"
@@ -40,7 +40,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     )
 
 
-class IncomfortSensor(IncomfortChild, SensorEntity):
+class IncomfortSensor(IncomfortEntity, SensorEntity):
     """Representation of an InComfort/InTouch sensor device."""
 
     def __init__(self, client, heater, name) -> None:
@@ -49,29 +49,15 @@ class IncomfortSensor(IncomfortChild, SensorEntity):
 
         self._client = client
         self._heater = heater
-
-        self._unique_id = f"{heater.serial_no}_{slugify(name)}"
+        self._attr_unique_id = f"{heater.serial_no}_{slugify(name)}"
         self.entity_id = f"{SENSOR_DOMAIN}.{DOMAIN}_{slugify(name)}"
-        self._name = f"Boiler {name}"
-
-        self._device_class = None
+        self._attr_name = f"Boiler {name}"
         self._state_attr = INCOMFORT_MAP_ATTRS[name][0]
-        self._unit_of_measurement = None
 
     @property
     def state(self) -> str | None:
         """Return the state of the sensor."""
         return self._heater.status[self._state_attr]
-
-    @property
-    def device_class(self) -> str | None:
-        """Return the device class of the sensor."""
-        return self._device_class
-
-    @property
-    def unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement of the sensor."""
-        return self._unit_of_measurement
 
 
 class IncomfortPressure(IncomfortSensor):

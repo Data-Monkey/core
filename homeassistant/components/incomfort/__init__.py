@@ -62,25 +62,9 @@ async def async_setup(hass, hass_config):
 
 
 class IncomfortEntity(Entity):
-    """Base class for all InComfort entities."""
-
-    def __init__(self) -> None:
-        """Initialize the class."""
-        self._unique_id = self._name = None
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return a unique ID."""
-        return self._unique_id
-
-    @property
-    def name(self) -> str | None:
-        """Return the name of the sensor."""
-        return self._name
-
-
-class IncomfortChild(IncomfortEntity):
     """Base class for all InComfort entities (excluding the boiler)."""
+
+    _attr_should_poll = False
 
     async def async_added_to_hass(self) -> None:
         """Set up a listener when this entity is added to HA."""
@@ -89,8 +73,3 @@ class IncomfortChild(IncomfortEntity):
     @callback
     def _refresh(self) -> None:
         self.async_schedule_update_ha_state(force_refresh=True)
-
-    @property
-    def should_poll(self) -> bool:
-        """Return False as this device should never be polled."""
-        return False
