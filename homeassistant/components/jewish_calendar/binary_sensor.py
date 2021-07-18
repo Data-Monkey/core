@@ -27,24 +27,18 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class JewishCalendarBinarySensor(BinarySensorEntity):
     """Representation of an Jewish Calendar binary sensor."""
 
+    _attr_should_poll = False
+
     def __init__(self, data, sensor, sensor_info):
         """Initialize the binary sensor."""
-        self._type = sensor
-        self._prefix = data["prefix"]
         self._attr_name = f"{data['name']} {sensor_info[0]}"
-        self._attr_unique_id = f"{self._prefix}_{self._type}"
+        self._attr_unique_id = f"{data['prefix']}_{sensor}"
         self._attr_icon = sensor_info[1]
-        self._attr_should_poll = False
         self._location = data["location"]
         self._hebrew = data["language"] == "hebrew"
         self._candle_lighting_offset = data["candle_lighting_offset"]
         self._havdalah_offset = data["havdalah_offset"]
         self._update_unsub = None
-
-    @property
-    def is_on(self):
-        """Return true if sensor is on."""
-        return self._get_zmanim().issur_melacha_in_effect
 
     def _get_zmanim(self):
         """Return the Zmanim object for now()."""
@@ -72,6 +66,7 @@ class JewishCalendarBinarySensor(BinarySensorEntity):
         """Schedule the next update of the sensor."""
         now = dt_util.now()
         zmanim = self._get_zmanim()
+        self._attr_is_on = zmanim.issur_melacha_in_effect
         update = zmanim.zmanim["sunrise"] + dt.timedelta(days=1)
         candle_lighting = zmanim.candle_lighting
         if candle_lighting is not None and now < candle_lighting < update:

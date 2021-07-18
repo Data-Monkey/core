@@ -36,9 +36,8 @@ class JewishCalendarSensor(SensorEntity):
     def __init__(self, data, sensor, sensor_info):
         """Initialize the Jewish calendar sensor."""
         self._type = sensor
-        self._prefix = data["prefix"]
         self._attr_name = f"{data['name']} {sensor_info[0]}"
-        self._attr_unique_id = f"{self._prefix}_{self._type}"
+        self._attr_unique_id = f"{data['prefix']}_{sensor}"
         self._attr_icon = sensor_info[1]
         self._location = data["location"]
         self._hebrew = data["language"] == "hebrew"
