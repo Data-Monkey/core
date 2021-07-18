@@ -57,15 +57,10 @@ class JuiceNetSensorDevice(JuiceNetDevice, SensorEntity):
     def __init__(self, device, sensor_type, coordinator):
         """Initialise the sensor."""
         super().__init__(device, sensor_type, coordinator)
-        self._name = SENSOR_TYPES[sensor_type][0]
-        self._unit_of_measurement = SENSOR_TYPES[sensor_type][1]
+        self._attr_name = f"{device.name} {SENSOR_TYPES[sensor_type][0]}"
+        self._attr_unit_of_measurement = SENSOR_TYPES[sensor_type][1]
         self._attr_device_class = SENSOR_TYPES[sensor_type][2]
         self._attr_state_class = SENSOR_TYPES[sensor_type][3]
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self.device.name} {self._name}"
 
     @property
     def icon(self):
@@ -92,11 +87,6 @@ class JuiceNetSensorDevice(JuiceNetDevice, SensorEntity):
         elif self.type == "energy_added":
             icon = "mdi:flash"
         return icon
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return self._unit_of_measurement
 
     @property
     def state(self):

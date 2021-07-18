@@ -23,11 +23,7 @@ class JuiceNetChargeNowSwitch(JuiceNetDevice, SwitchEntity):
     def __init__(self, device, coordinator):
         """Initialise the switch."""
         super().__init__(device, "charge_now", coordinator)
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self.device.name} Charge Now"
+        self._attr_name = f"{device.name} Charge Now"
 
     @property
     def is_on(self):
