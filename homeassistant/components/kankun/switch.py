@@ -45,7 +45,6 @@ def setup_platform(hass, config, add_entities_callback, discovery_info=None):
     for dev_name, properties in switches.items():
         devices.append(
             KankunSwitch(
-                hass,
                 properties.get(CONF_NAME, dev_name),
                 properties.get(CONF_HOST),
                 properties.get(CONF_PORT, DEFAULT_PORT),
@@ -61,11 +60,10 @@ def setup_platform(hass, config, add_entities_callback, discovery_info=None):
 class KankunSwitch(SwitchEntity):
     """Representation of a Kankun Wifi switch."""
 
-    def __init__(self, hass, name, host, port, path, user, passwd):
+    def __init__(self, name, host, port, path, user, passwd):
         """Initialize the device."""
-        self._hass = hass
-        self._name = name
-        self._state = False
+        self._attr_name = name
+        self._attr_is_on = False
         self._url = f"http://{host}:{port}{path}"
         if user is not None:
             self._auth = (user, passwd)
@@ -94,26 +92,16 @@ class KankunSwitch(SwitchEntity):
         except requests.RequestException:
             _LOGGER.error("State query failed")
 
-    @property
-    def name(self):
-        """Return the name of the switch."""
-        return self._name
-
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self._state
-
     def update(self):
         """Update device state."""
-        self._state = self._query_state()
+        self._attr_is_on = self._query_state()
 
     def turn_on(self, **kwargs):
         """Turn the device on."""
         if self._switch("on"):
-            self._state = True
+            self._attr_is_on = True
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
         if self._switch("off"):
-            self._state = False
+            self._attr_is_on = False
