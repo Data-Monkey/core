@@ -68,6 +68,10 @@ class KNXFan(KnxEntity, FanEntity):
 
         self._attr_unique_id = str(self._device.speed.group_address)
 
+        self._attr_supported_features = SUPPORT_SET_SPEED
+        if self._device.supports_oscillation:
+            self._attr_supported_features |= SUPPORT_OSCILLATE
+
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed of the fan, as a percentage."""
         if self._step_range:
@@ -75,16 +79,6 @@ class KNXFan(KnxEntity, FanEntity):
             await self._device.set_speed(step)
         else:
             await self._device.set_speed(percentage)
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        flags = SUPPORT_SET_SPEED
-
-        if self._device.supports_oscillation:
-            flags |= SUPPORT_OSCILLATE
-
-        return flags
 
     @property
     def percentage(self) -> int | None:
