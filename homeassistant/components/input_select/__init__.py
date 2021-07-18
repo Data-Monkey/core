@@ -201,11 +201,16 @@ class InputSelectStorageCollection(collection.StorageCollection):
 class InputSelect(RestoreEntity):
     """Representation of a select input."""
 
+    _attr_should_poll = False
+
     def __init__(self, config: dict) -> None:
         """Initialize a select input."""
         self._config = config
+        self._attr_icon = config.get(CONF_ICON)
+        self._attr_name = config.get(CONF_NAME)
+        self._attr_unique_id = config[CONF_ID]
         self.editable = True
-        self._current_option = config.get(CONF_INITIAL)
+        self._attr_state = config.get(CONF_INITIAL)
 
     @classmethod
     def from_yaml(cls, config: dict) -> InputSelect:
@@ -218,29 +223,14 @@ class InputSelect(RestoreEntity):
     async def async_added_to_hass(self):
         """Run when entity about to be added."""
         await super().async_added_to_hass()
-        if self._current_option is not None:
+        if self.state is not None:
             return
 
         state = await self.async_get_last_state()
         if not state or state.state not in self._options:
-            self._current_option = self._options[0]
+            self._attr_state = self._options[0]
         else:
-            self._current_option = state.state
-
-    @property
-    def should_poll(self):
-        """If entity should be polled."""
-        return False
-
-    @property
-    def name(self):
-        """Return the name of the select input."""
-        return self._config.get(CONF_NAME)
-
-    @property
-    def icon(self):
-        """Return the icon to be used for this entity."""
-        return self._config.get(CONF_ICON)
+            self._attr_state = state.state
 
     @property
     def _options(self) -> list[str]:
@@ -248,19 +238,9 @@ class InputSelect(RestoreEntity):
         return self._config[CONF_OPTIONS]
 
     @property
-    def state(self):
-        """Return the state of the component."""
-        return self._current_option
-
-    @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {ATTR_OPTIONS: self._config[ATTR_OPTIONS], ATTR_EDITABLE: self.editable}
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return unique id for the entity."""
-        return self._config[CONF_ID]
 
     @callback
     def async_select_option(self, option):
@@ -272,20 +252,20 @@ class InputSelect(RestoreEntity):
                 ", ".join(self._options),
             )
             return
-        self._current_option = option
+        self._attr_state = option
         self.async_write_ha_state()
 
     @callback
     def async_select_index(self, idx):
         """Select new option by index."""
         new_index = idx % len(self._options)
-        self._current_option = self._options[new_index]
+        self._attr_state = self._options[new_index]
         self.async_write_ha_state()
 
     @callback
     def async_offset_index(self, offset, cycle):
         """Offset current index."""
-        current_index = self._options.index(self._current_option)
+        current_index = self._options.index(self.state)
         new_index = current_index + offset
         if cycle:
             new_index = new_index % len(self._options)
@@ -294,7 +274,7 @@ class InputSelect(RestoreEntity):
                 new_index = 0
             elif new_index >= len(self._options):
                 new_index = len(self._options) - 1
-        self._current_option = self._options[new_index]
+        self._attr_state = self._options[new_index]
         self.async_write_ha_state()
 
     @callback
@@ -310,7 +290,7 @@ class InputSelect(RestoreEntity):
     @callback
     def async_set_options(self, options):
         """Set options."""
-        self._current_option = options[0]
+        self._attr_state = options[0]
         self._config[CONF_OPTIONS] = options
         self.async_write_ha_state()
 
