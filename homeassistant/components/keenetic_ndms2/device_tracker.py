@@ -155,18 +155,24 @@ def update_items(router: KeeneticRouter, async_add_entities, tracked: set[str]):
 class KeeneticTracker(ScannerEntity):
     """Representation of network device."""
 
+    _attr_should_poll = False
+
     def __init__(self, device: Device, router: KeeneticRouter) -> None:
         """Initialize the tracked device."""
+        self._attr_name = device.name or device.mac
+        self._attr_unique_id = f"{device.mac}_{router.config_entry.entry_id}"
         self._device = device
         self._router = router
         self._last_seen = (
             dt_util.utcnow() if device.mac in router.last_devices else None
         )
-
-    @property
-    def should_poll(self) -> bool:
-        """Return False since entity pushes its state to HA."""
-        return False
+        info = {
+            "connections": {(CONNECTION_NETWORK_MAC, device.mac)},
+            "identifiers": {(DOMAIN, device.mac)},
+        }
+        if device.name:
+            info["name"] = device.name
+        self._attr_device_info = info
 
     @property
     def is_connected(self):
@@ -181,16 +187,6 @@ class KeeneticTracker(ScannerEntity):
     def source_type(self):
         """Return the source type of the client."""
         return SOURCE_TYPE_ROUTER
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return self._device.name or self._device.mac
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique identifier for this device."""
-        return f"{self._device.mac}_{self._router.config_entry.entry_id}"
 
     @property
     def ip_address(self) -> str:
@@ -215,19 +211,6 @@ class KeeneticTracker(ScannerEntity):
                 "interface": self._device.interface,
             }
         return None
-
-    @property
-    def device_info(self):
-        """Return a client description for device registry."""
-        info = {
-            "connections": {(CONNECTION_NETWORK_MAC, self._device.mac)},
-            "identifiers": {(DOMAIN, self._device.mac)},
-        }
-
-        if self._device.name:
-            info["name"] = self._device.name
-
-        return info
 
     async def async_added_to_hass(self):
         """Client entity created."""
