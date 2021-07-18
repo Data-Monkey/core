@@ -195,9 +195,13 @@ class DateTimeStorageCollection(collection.StorageCollection):
 class InputDatetime(RestoreEntity):
     """Representation of a datetime input."""
 
+    _attr_should_poll = False
+
     def __init__(self, config: dict) -> None:
         """Initialize a select input."""
         self._config = config
+        self._attr_unique_id = config[CONF_ID]
+        self._attr_icon = config.get(CONF_ICON)
         self.editable = True
         self._current_datetime = None
 
@@ -280,11 +284,6 @@ class InputDatetime(RestoreEntity):
         )
 
     @property
-    def should_poll(self):
-        """If entity should be polled."""
-        return False
-
-    @property
     def name(self):
         """Return the name of the select input."""
         return self._config.get(CONF_NAME)
@@ -298,11 +297,6 @@ class InputDatetime(RestoreEntity):
     def has_time(self) -> bool:
         """Return True if entity has time."""
         return self._config[CONF_HAS_TIME]
-
-    @property
-    def icon(self):
-        """Return the icon to be used for this entity."""
-        return self._config.get(CONF_ICON)
 
     @property
     def state(self):
@@ -357,11 +351,6 @@ class InputDatetime(RestoreEntity):
             attrs["timestamp"] = self._current_datetime.timestamp()
 
         return attrs
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return unique id of the entity."""
-        return self._config[CONF_ID]
 
     @callback
     def async_set_datetime(self, date=None, time=None, datetime=None, timestamp=None):
