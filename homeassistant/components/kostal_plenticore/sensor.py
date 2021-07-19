@@ -118,16 +118,18 @@ class PlenticoreDataSensor(CoordinatorEntity, SensorEntity):
     ):
         """Create a new Sensor Entity for Plenticore process data."""
         super().__init__(coordinator)
-        self.entry_id = entry_id
-        self.platform_name = platform_name
         self.module_id = module_id
         self.data_id = data_id
-
-        self._sensor_name = sensor_name
-        self._sensor_data = sensor_data
+        self._attr_name = f"{platform_name} {sensor_name}"
+        self._attr_icon = sensor_data.get(ATTR_ICON)
+        self._attr_unique_id = f"{entry_id}_{module_id}_{data_id}"
+        self._attr_unit_of_measurement = sensor_data.get(ATTR_UNIT_OF_MEASUREMENT)
         self._formatter = formatter
-
-        self._device_info = device_info
+        self._attr_device_class = sensor_data.get(ATTR_DEVICE_CLASS)
+        self._attr_device_info = device_info
+        self._attr_entity_registry_enabled_default = sensor_data.get(
+            ATTR_ENABLED_DEFAULT, False
+        )
 
     @property
     def available(self) -> bool:
@@ -148,41 +150,6 @@ class PlenticoreDataSensor(CoordinatorEntity, SensorEntity):
         """Unregister this entity from the Update Coordinator."""
         self.coordinator.stop_fetch_data(self.module_id, self.data_id)
         await super().async_will_remove_from_hass()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info."""
-        return self._device_info
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of this Sensor Entity."""
-        return f"{self.entry_id}_{self.module_id}_{self.data_id}"
-
-    @property
-    def name(self) -> str:
-        """Return the name of this Sensor Entity."""
-        return f"{self.platform_name} {self._sensor_name}"
-
-    @property
-    def unit_of_measurement(self) -> str | None:
-        """Return the unit of this Sensor Entity or None."""
-        return self._sensor_data.get(ATTR_UNIT_OF_MEASUREMENT)
-
-    @property
-    def icon(self) -> str | None:
-        """Return the icon name of this Sensor Entity or None."""
-        return self._sensor_data.get(ATTR_ICON)
-
-    @property
-    def device_class(self) -> str | None:
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return self._sensor_data.get(ATTR_DEVICE_CLASS)
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if the entity should be enabled when first added to the entity registry."""
-        return self._sensor_data.get(ATTR_ENABLED_DEFAULT, False)
 
     @property
     def state(self) -> Any | None:
