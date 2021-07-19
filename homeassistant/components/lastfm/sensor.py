@@ -54,73 +54,38 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LastfmSensor(SensorEntity):
     """A class for the Last.fm account."""
 
+    _attr_icon = ICON
+
     def __init__(self, user, lastfm_api):
         """Initialize the sensor."""
-        self._unique_id = hashlib.sha256(user.encode("utf-8")).hexdigest()
+        self._attr_unique_id = hashlib.sha256(user.encode("utf-8")).hexdigest()
         self._user = lastfm_api.get_user(user)
-        self._name = user
-        self._lastfm = lastfm_api
-        self._state = "Not Scrobbling"
-        self._playcount = None
-        self._lastplayed = None
-        self._topplayed = None
-        self._cover = None
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of the sensor."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
+        self._attr_name = user
+        self._attr_state = STATE_NOT_SCROBBLING
+        self._attr_extra_state_attributes = {}
+        self._attr_extra_state_attributes[ATTR_ATTRIBUTION] = ATTRIBUTION
 
     def update(self):
         """Update device state."""
-        self._cover = self._user.get_image()
-        self._playcount = self._user.get_playcount()
+        self._attr_entity_picture = self._user.get_image()
+        self._attr_extra_state_attributes[ATTR_PLAY_COUNT] = self._user.get_playcount()
 
         recent_tracks = self._user.get_recent_tracks(limit=2)
         if recent_tracks:
             last = recent_tracks[0]
-            self._lastplayed = f"{last.track.artist} - {last.track.title}"
+            lastplayed = f"{last.track.artist} - {last.track.title}"
+            self._attr_extra_state_attributes[ATTR_LAST_PLAYED] = lastplayed
 
         top_tracks = self._user.get_top_tracks(limit=1)
         if top_tracks:
             top = top_tracks[0]
             toptitle = re.search("', '(.+?)',", str(top))
             topartist = re.search("'(.+?)',", str(top))
-            self._topplayed = f"{topartist.group(1)} - {toptitle.group(1)}"
+            topplayed = f"{topartist.group(1)} - {toptitle.group(1)}"
+            self._attr_extra_state_attributes[ATTR_TOP_PLAYED] = topplayed
 
         now_playing = self._user.get_now_playing()
         if now_playing is None:
-            self._state = STATE_NOT_SCROBBLING
-            return
-
-        self._state = f"{now_playing.artist} - {now_playing.title}"
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
-            ATTR_LAST_PLAYED: self._lastplayed,
-            ATTR_PLAY_COUNT: self._playcount,
-            ATTR_TOP_PLAYED: self._topplayed,
-        }
-
-    @property
-    def entity_picture(self):
-        """Avatar of the user."""
-        return self._cover
-
-    @property
-    def icon(self):
-        """Return the icon to use in the frontend."""
-        return ICON
+            self._attr_state = STATE_NOT_SCROBBLING
+        else:
+            self._attr_state = f"{now_playing.artist} - {now_playing.title}"
