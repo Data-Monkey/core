@@ -270,25 +270,32 @@ def cmd(func):
 class KodiEntity(MediaPlayerEntity):
     """Representation of a XBMC/Kodi device."""
 
+    _attr_supported_features = SUPPORT_KODI
+
     def __init__(self, connection, kodi, name, uid):
         """Initialize the Kodi entity."""
         self._connection = connection
         self._kodi = kodi
-        self._name = name
-        self._unique_id = uid
+        self._attr_name = name
+        self._attr_unique_id = uid
         self._players = None
         self._properties = {}
         self._item = {}
         self._app_properties = {}
-        self._media_position_updated_at = None
         self._media_position = None
+        self._attr_should_poll = not connection.can_subscribe
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "manufacturer": "Kodi",
+        }
 
     def _reset_state(self, players=None):
         self._players = players
         self._properties = {}
         self._item = {}
         self._app_properties = {}
-        self._media_position_updated_at = None
+        self._attr_media_position_updated_at = None
         self._media_position = None
 
     @property
@@ -326,8 +333,8 @@ class KodiEntity(MediaPlayerEntity):
     @callback
     def async_on_volume_changed(self, sender, data):
         """Handle the volume changes."""
-        self._app_properties["volume"] = data["volume"]
-        self._app_properties["muted"] = data["muted"]
+        self._attr_volume_level = int(data["volume"]) / 100.0
+        self._attr_is_volume_muted = data["muted"]
         self.async_write_ha_state()
 
     async def async_on_quit(self, sender, data):
@@ -339,20 +346,6 @@ class KodiEntity(MediaPlayerEntity):
         self.async_write_ha_state()
         if close:
             await self._connection.close()
-
-    @property
-    def unique_id(self):
-        """Return the unique id of the device."""
-        return self._unique_id
-
-    @property
-    def device_info(self):
-        """Return device info for this device."""
-        return {
-            "identifiers": {(DOMAIN, self.unique_id)},
-            "name": self.name,
-            "manufacturer": "Kodi",
-        }
 
     @property
     def state(self):
@@ -460,9 +453,11 @@ class KodiEntity(MediaPlayerEntity):
             return
 
         if self._players:
-            self._app_properties = await self._kodi.get_application_properties(
-                ["volume", "muted"]
-            )
+            (
+                volume_level,
+                self._attr_is_volume_muted,
+            ) = await self._kodi.get_application_properties(["volume", "muted"])
+            self._attr_volume_level = int(volume_level) / 100.0
 
             self._properties = await self._kodi.get_player_properties(
                 self._players[0], ["time", "totaltime", "speed", "live"]
@@ -470,7 +465,7 @@ class KodiEntity(MediaPlayerEntity):
 
             position = self._properties["time"]
             if self._media_position != position:
-                self._media_position_updated_at = dt_util.utcnow()
+                self._attr_media_position_updated_at = dt_util.utcnow()
                 self._media_position = position
 
             self._item = await self._kodi.get_playing_item_properties(
@@ -488,45 +483,36 @@ class KodiEntity(MediaPlayerEntity):
                     "episode",
                 ],
             )
+            item = self._item
+            self._attr_media_content_id = item.get("uniqueid", None)
+            self._attr_media_title = (
+                item.get("title") or item.get("label") or item.get("file")
+            )
+            self._attr_media_series_title = item.get("showtitle")
+            item_type = MEDIA_TYPES.get(item.get("type"))
+            if (item_type is None or item_type == "channel") and self._players:
+                self._attr_media_content_type = MEDIA_TYPES.get(
+                    self._players[0]["type"]
+                )
+            else:
+                self._attr_media_content_type = item_type
+            self._attr_media_season = item.get("season")
+            self._attr_media_episode = item.get("episode")
+            self._attr_media_album_name = item.get("album")
+            artists = item.get("artist", [])
+            self._attr_media_artist = None
+            if artists:
+                self._attr_media_artist = artists[0]
+            artists = item.get("albumartist", [])
+            self._attr_media_album_artist = None
+            if artists:
+                self._attr_media_album_artist = artists[0]
+            thumbnail = item.get("thumbnail")
+            self._attr_media_image_url = None
+            if thumbnail is not None:
+                self._attr_media_image_url = self._kodi.thumbnail_url(thumbnail)
         else:
             self._reset_state([])
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def should_poll(self):
-        """Return True if entity has to be polled for state."""
-        return not self._connection.can_subscribe
-
-    @property
-    def volume_level(self):
-        """Volume level of the media player (0..1)."""
-        if "volume" in self._app_properties:
-            return int(self._app_properties["volume"]) / 100.0
-
-    @property
-    def is_volume_muted(self):
-        """Boolean if volume is currently muted."""
-        return self._app_properties.get("muted")
-
-    @property
-    def media_content_id(self):
-        """Content ID of current playing media."""
-        return self._item.get("uniqueid", None)
-
-    @property
-    def media_content_type(self):
-        """Content type of current playing media.
-
-        If the media type cannot be detected, the player type is used.
-        """
-        item_type = MEDIA_TYPES.get(self._item.get("type"))
-        if (item_type is None or item_type == "channel") and self._players:
-            return MEDIA_TYPES.get(self._players[0]["type"])
-        return item_type
 
     @property
     def media_duration(self):
@@ -554,70 +540,6 @@ class KodiEntity(MediaPlayerEntity):
             return None
 
         return time["hours"] * 3600 + time["minutes"] * 60 + time["seconds"]
-
-    @property
-    def media_position_updated_at(self):
-        """Last valid time of media position."""
-        return self._media_position_updated_at
-
-    @property
-    def media_image_url(self):
-        """Image url of current playing media."""
-        thumbnail = self._item.get("thumbnail")
-        if thumbnail is None:
-            return None
-
-        return self._kodi.thumbnail_url(thumbnail)
-
-    @property
-    def media_title(self):
-        """Title of current playing media."""
-        # find a string we can use as a title
-        item = self._item
-        return item.get("title") or item.get("label") or item.get("file")
-
-    @property
-    def media_series_title(self):
-        """Title of series of current playing media, TV show only."""
-        return self._item.get("showtitle")
-
-    @property
-    def media_season(self):
-        """Season of current playing media, TV show only."""
-        return self._item.get("season")
-
-    @property
-    def media_episode(self):
-        """Episode of current playing media, TV show only."""
-        return self._item.get("episode")
-
-    @property
-    def media_album_name(self):
-        """Album name of current playing media, music track only."""
-        return self._item.get("album")
-
-    @property
-    def media_artist(self):
-        """Artist of current playing media, music track only."""
-        artists = self._item.get("artist", [])
-        if artists:
-            return artists[0]
-
-        return None
-
-    @property
-    def media_album_artist(self):
-        """Album artist of current playing media, music track only."""
-        artists = self._item.get("albumartist", [])
-        if artists:
-            return artists[0]
-
-        return None
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        return SUPPORT_KODI
 
     async def async_turn_on(self):
         """Turn the media player on."""
