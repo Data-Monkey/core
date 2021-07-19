@@ -65,9 +65,16 @@ class KulerskyLight(LightEntity):
     def __init__(self, light: pykulersky.Light) -> None:
         """Initialize a Kuler Sky light."""
         self._light = light
-        self._available = None
+        self._attr_name = light.name
+        self._attr_unique_id = light.address
         self._attr_supported_color_modes = {COLOR_MODE_RGBW}
+        self._attr_available = False
         self._attr_color_mode = COLOR_MODE_RGBW
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "manufacturer": "Brightech",
+        }
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -85,35 +92,6 @@ class KulerskyLight(LightEntity):
             _LOGGER.debug(
                 "Exception disconnected from %s", self._light.address, exc_info=True
             )
-
-    @property
-    def name(self):
-        """Return the display name of this light."""
-        return self._light.name
-
-    @property
-    def unique_id(self):
-        """Return the ID of this light."""
-        return self._light.address
-
-    @property
-    def device_info(self):
-        """Device info for this light."""
-        return {
-            "identifiers": {(DOMAIN, self.unique_id)},
-            "name": self.name,
-            "manufacturer": "Brightech",
-        }
-
-    @property
-    def is_on(self):
-        """Return true if light is on."""
-        return self.brightness > 0
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._available
 
     async def async_turn_on(self, **kwargs):
         """Instruct the light to turn on."""
@@ -140,22 +118,24 @@ class KulerskyLight(LightEntity):
     async def async_update(self):
         """Fetch new state data for this light."""
         try:
-            if not self._available:
+            if not self.available:
                 await self._light.connect()
             rgbw = await self._light.get_color()
         except pykulersky.PykulerskyException as exc:
-            if self._available:
+            if self.available:
                 _LOGGER.warning("Unable to connect to %s: %s", self._light.address, exc)
-            self._available = False
+            self._attr_available = False
             return
-        if self._available is False:
+        if self.available is False:
             _LOGGER.info("Reconnected to %s", self._light.address)
 
-        self._available = True
+        self._attr_available = True
         brightness = max(rgbw)
         if not brightness:
-            rgbw_normalized = [0, 0, 0, 0]
+            self._attr_rgbw_color = [0, 0, 0, 0]
         else:
-            rgbw_normalized = [round(x * 255 / brightness) for x in rgbw]
+            self._attr_rgbw_color = tuple(
+                round(x * 255 / brightness) for x in rgbw
+            )  # pylint: disable=consider-using-generator
         self._attr_brightness = brightness
-        self._attr_rgbw_color = tuple(rgbw_normalized)
+        self._attr_is_on = brightness > 0
