@@ -66,7 +66,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if (sensor.sensor_type != kwb.PROP_SENSOR_RAW) or (
             sensor.sensor_type == kwb.PROP_SENSOR_RAW and raw
         ):
-            sensors.append(KWBSensor(easyfire, sensor, client_name))
+            sensors.append(KWBSensor(sensor, client_name))
 
     hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, lambda event: easyfire.stop_thread())
 
@@ -76,17 +76,11 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class KWBSensor(SensorEntity):
     """Representation of a KWB Easyfire sensor."""
 
-    def __init__(self, easyfire, sensor, client_name):
+    def __init__(self, sensor, client_name):
         """Initialize the KWB sensor."""
-        self._easyfire = easyfire
         self._sensor = sensor
-        self._client_name = client_name
-        self._name = self._sensor.name
-
-    @property
-    def name(self):
-        """Return the name."""
-        return f"{self._client_name} {self._name}"
+        self._attr_name = f"{client_name} {sensor.name}"
+        self._attr_unit_of_measurement = sensor.unit_of_measurement
 
     @property
     def available(self) -> bool:
@@ -99,8 +93,3 @@ class KWBSensor(SensorEntity):
         if self._sensor.value is not None and self._sensor.available:
             return self._sensor.value
         return None
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._sensor.unit_of_measurement
