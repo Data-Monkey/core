@@ -62,9 +62,7 @@ class ShutterContactSensor(SHCEntity, BinarySensorEntity):
             "FRENCH_WINDOW": DEVICE_CLASS_DOOR,
             "GENERIC": DEVICE_CLASS_WINDOW,
         }
-        self._attr_device_class = switcher.get(
-            self._device.device_class, DEVICE_CLASS_WINDOW
-        )
+        self._attr_device_class = switcher.get(device.device_class, DEVICE_CLASS_WINDOW)
 
     @property
     def is_on(self):
