@@ -44,44 +44,25 @@ class KonnectedSwitch(ToggleEntity):
         self._data = data
         self._device_id = device_id
         self._zone_num = zone_num
-        self._activation = self._data.get(CONF_ACTIVATION, STATE_HIGH)
-        self._momentary = self._data.get(CONF_MOMENTARY)
-        self._pause = self._data.get(CONF_PAUSE)
-        self._repeat = self._data.get(CONF_REPEAT)
-        self._state = self._boolean_state(self._data.get(ATTR_STATE))
-        self._name = self._data.get(CONF_NAME)
-        self._unique_id = (
-            f"{device_id}-{self._zone_num}-{self._momentary}-"
-            f"{self._pause}-{self._repeat}"
+        self._activation = data.get(CONF_ACTIVATION, STATE_HIGH)
+        self._momentary = data.get(CONF_MOMENTARY)
+        self._pause = data.get(CONF_PAUSE)
+        self._repeat = data.get(CONF_REPEAT)
+        self._attr_is_on = self._boolean_state(data.get(ATTR_STATE))
+        self._attr_name = data.get(CONF_NAME)
+        self._attr_unique_id = (
+            f"{device_id}-{zone_num}-{data.get(CONF_MOMENTARY)}-"
+            f"{data.get(CONF_PAUSE)}-{data.get(CONF_REPEAT)}"
         )
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the switch."""
-        return self._name
-
-    @property
-    def is_on(self):
-        """Return the status of the sensor."""
-        return self._state
+        self._attr_device_info = {
+            "identifiers": {(KONNECTED_DOMAIN, device_id)},
+        }
 
     @property
     def panel(self):
         """Return the Konnected HTTP client."""
         device_data = self.hass.data[KONNECTED_DOMAIN][CONF_DEVICES][self._device_id]
         return device_data.get("panel")
-
-    @property
-    def device_info(self):
-        """Return the device info."""
-        return {
-            "identifiers": {(KONNECTED_DOMAIN, self._device_id)},
-        }
 
     @property
     def available(self):
@@ -123,7 +104,7 @@ class KonnectedSwitch(ToggleEntity):
             return self._activation == STATE_HIGH
 
     def _set_state(self, state):
-        self._state = state
+        self._attr_is_on = state
         self.async_write_ha_state()
         _LOGGER.debug(
             "Setting status of %s actuator zone %s to %s",

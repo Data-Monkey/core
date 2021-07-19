@@ -77,46 +77,22 @@ class KonnectedSensor(SensorEntity):
         """Initialize the entity for a single sensor_type."""
         self._addr = addr
         self._data = data
-        self._device_id = device_id
         self._type = sensor_type
-        self._zone_num = self._data.get(CONF_ZONE)
-        self._unit_of_measurement = SENSOR_TYPES[sensor_type][1]
-        self._unique_id = addr or f"{device_id}-{self._zone_num}-{sensor_type}"
+        self._attr_unit_of_measurement = SENSOR_TYPES[sensor_type][1]
+        self._attr_unique_id = (
+            addr or f"{device_id}-{data.get(CONF_ZONE)}-{sensor_type}"
+        )
 
         # set initial state if known at initialization
-        self._state = initial_state
-        if self._state:
-            self._state = round(float(self._state), 1)
+        self._attr_state = initial_state
+        if self.state:
+            self._attr_state = round(float(self.state), 1)
 
         # set entity name if given
-        self._name = self._data.get(CONF_NAME)
-        if self._name:
-            self._name += f" {SENSOR_TYPES[sensor_type][0]}"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit_of_measurement
-
-    @property
-    def device_info(self):
-        """Return the device info."""
-        return {"identifiers": {(KONNECTED_DOMAIN, self._device_id)}}
+        self._attr_name = data.get(CONF_NAME)
+        if self.name:
+            self._attr_name += f" {SENSOR_TYPES[sensor_type][0]}"
+        self._attr_device_info = {"identifiers": {(KONNECTED_DOMAIN, device_id)}}
 
     async def async_added_to_hass(self):
         """Store entity_id and register state change callback."""
@@ -130,7 +106,7 @@ class KonnectedSensor(SensorEntity):
     def async_set_state(self, state):
         """Update the sensor's state."""
         if self._type == DEVICE_CLASS_HUMIDITY:
-            self._state = int(float(state))
+            self._attr_state = int(float(state))
         else:
-            self._state = round(float(state), 1)
+            self._attr_state = round(float(state), 1)
         self.async_write_ha_state()
