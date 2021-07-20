@@ -48,6 +48,11 @@ async def setup_config_entry(
 async def _create_mocked_yeti(raise_exception=False):
     mocked_yeti = AsyncMock()
     # mocked_yeti.get_state = AsyncMock()
+    mocked_yeti.data = {}
+    mocked_yeti.data["firmwareVersion"] = "1.0.0"
+    mocked_yeti.sysdata = {}
+    mocked_yeti.sysdata["model"] = "test_model"
+    mocked_yeti.sysdata["macAddress"] = "00:00:00:00:00:00"
     return mocked_yeti
 
 

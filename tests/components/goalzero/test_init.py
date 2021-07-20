@@ -6,7 +6,7 @@ from goalzero import exceptions
 from homeassistant.components.goalzero.const import DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 
-from . import CONF_DATA, _patch_init_yeti
+from . import CONF_DATA, _create_mocked_yeti, _patch_init_yeti
 
 from tests.common import MockConfigEntry
 
@@ -18,15 +18,16 @@ async def test_setup_config(hass):
         data=CONF_DATA,
     )
     entry.add_to_hass(hass)
-    with patch(
-        "homeassistant.components.goalzero.Yeti.init_connect",
-    ):
+    mocked_yeti = await _create_mocked_yeti()
+    with _patch_init_yeti(mocked_yeti):
+
         await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.state == ConfigEntryState.LOADED
     entries = hass.config_entries.async_entries()
     assert entries
     assert len(entries) == 1
+    assert entry.data == CONF_DATA
 
 
 async def test_async_setup_entry_not_ready(hass):
