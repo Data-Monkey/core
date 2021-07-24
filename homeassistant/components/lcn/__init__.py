@@ -139,6 +139,8 @@ async def async_unload_entry(
 class LcnEntity(Entity):
     """Parent class for all entities associated with the LCN component."""
 
+    _attr_should_poll = False
+
     def __init__(
         self, config: ConfigType, entry_id: str, device_connection: DeviceConnectionType
     ) -> None:
@@ -147,7 +149,7 @@ class LcnEntity(Entity):
         self.entry_id = entry_id
         self.device_connection = device_connection
         self._unregister_for_inputs: Callable | None = None
-        self._name: str = config[CONF_NAME]
+        self._attr_name = config[CONF_NAME]
 
     @property
     def unique_id(self) -> str:
@@ -161,11 +163,6 @@ class LcnEntity(Entity):
         )
         return f"{self.entry_id}-{unique_device_id}-{self.config[CONF_RESOURCE]}"
 
-    @property
-    def should_poll(self) -> bool:
-        """Lcn device entity pushes its state to HA."""
-        return False
-
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         if not self.device_connection.is_group:
@@ -177,11 +174,6 @@ class LcnEntity(Entity):
         """Run when entity will be removed from hass."""
         if self._unregister_for_inputs is not None:
             self._unregister_for_inputs()
-
-    @property
-    def name(self) -> str:
-        """Return the name of the device."""
-        return self._name
 
     def input_received(self, input_obj: InputType) -> None:
         """Set state/value when LCN input object (command) is received."""

@@ -68,6 +68,8 @@ async def async_setup_entry(
 class LcnClimate(LcnEntity, ClimateEntity):
     """Representation of a LCN climate device."""
 
+    _attr_supported_features = const.SUPPORT_TARGET_TEMPERATURE
+
     def __init__(
         self, config: ConfigType, entry_id: str, device_connection: DeviceConnectionType
     ) -> None:
@@ -81,13 +83,17 @@ class LcnClimate(LcnEntity, ClimateEntity):
         )
 
         self.regulator_id = pypck.lcn_defs.Var.to_set_point_id(self.setpoint)
-        self.is_lockable = config[CONF_DOMAIN_DATA][CONF_LOCKABLE]
-        self._max_temp = config[CONF_DOMAIN_DATA][CONF_MAX_TEMP]
-        self._min_temp = config[CONF_DOMAIN_DATA][CONF_MIN_TEMP]
+        self._attr_max_temp = cast(float, config[CONF_DOMAIN_DATA][CONF_MAX_TEMP])
+        self._attr_min_temp = cast(float, config[CONF_DOMAIN_DATA][CONF_MIN_TEMP])
 
-        self._current_temperature = None
-        self._target_temperature = None
         self._is_on = True
+        self._attr_temperature_unit = TEMP_CELSIUS
+        if self.unit == pypck.lcn_defs.VarUnit.FAHRENHEIT:
+            self._attr_temperature_unit = TEMP_FAHRENHEIT
+        modes = [const.HVAC_MODE_HEAT]
+        if config[CONF_DOMAIN_DATA][CONF_LOCKABLE]:
+            modes.append(const.HVAC_MODE_OFF)
+        self._attr_hvac_modes = modes
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -103,60 +109,6 @@ class LcnClimate(LcnEntity, ClimateEntity):
             await self.device_connection.cancel_status_request_handler(self.variable)
             await self.device_connection.cancel_status_request_handler(self.setpoint)
 
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return const.SUPPORT_TARGET_TEMPERATURE
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        # Config schema only allows for: TEMP_CELSIUS and TEMP_FAHRENHEIT
-        if self.unit == pypck.lcn_defs.VarUnit.FAHRENHEIT:
-            return TEMP_FAHRENHEIT
-        return TEMP_CELSIUS
-
-    @property
-    def current_temperature(self) -> float | None:
-        """Return the current temperature."""
-        return self._current_temperature
-
-    @property
-    def target_temperature(self) -> float | None:
-        """Return the temperature we try to reach."""
-        return self._target_temperature
-
-    @property
-    def hvac_mode(self) -> str:
-        """Return hvac operation ie. heat, cool mode.
-
-        Need to be one of HVAC_MODE_*.
-        """
-        if self._is_on:
-            return const.HVAC_MODE_HEAT
-        return const.HVAC_MODE_OFF
-
-    @property
-    def hvac_modes(self) -> list[str]:
-        """Return the list of available hvac operation modes.
-
-        Need to be a subset of HVAC_MODES.
-        """
-        modes = [const.HVAC_MODE_HEAT]
-        if self.is_lockable:
-            modes.append(const.HVAC_MODE_OFF)
-        return modes
-
-    @property
-    def max_temp(self) -> float:
-        """Return the maximum temperature."""
-        return cast(float, self._max_temp)
-
-    @property
-    def min_temp(self) -> float:
-        """Return the minimum temperature."""
-        return cast(float, self._min_temp)
-
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
         if hvac_mode == const.HVAC_MODE_HEAT:
@@ -165,12 +117,14 @@ class LcnClimate(LcnEntity, ClimateEntity):
             ):
                 return
             self._is_on = True
+            self._attr_hvac_mode = const.HVAC_MODE_HEAT
             self.async_write_ha_state()
         elif hvac_mode == const.HVAC_MODE_OFF:
             if not await self.device_connection.lock_regulator(self.regulator_id, True):
                 return
             self._is_on = False
-            self._target_temperature = None
+            self._attr_hvac_mode = const.HVAC_MODE_OFF
+            self._attr_target_temperature = None
             self.async_write_ha_state()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -183,7 +137,7 @@ class LcnClimate(LcnEntity, ClimateEntity):
             self.setpoint, temperature, self.unit
         ):
             return
-        self._target_temperature = temperature
+        self._attr_target_temperature = temperature
         self.async_write_ha_state()
 
     def input_received(self, input_obj: InputType) -> None:
@@ -192,10 +146,17 @@ class LcnClimate(LcnEntity, ClimateEntity):
             return
 
         if input_obj.get_var() == self.variable:
-            self._current_temperature = input_obj.get_value().to_var_unit(self.unit)
+            self._attr_current_temperature = input_obj.get_value().to_var_unit(
+                self.unit
+            )
         elif input_obj.get_var() == self.setpoint:
             self._is_on = not input_obj.get_value().is_locked_regulator()
             if self._is_on:
-                self._target_temperature = input_obj.get_value().to_var_unit(self.unit)
+                self._attr_target_temperature = input_obj.get_value().to_var_unit(
+                    self.unit
+                )
+                self._attr_hvac_mode = const.HVAC_MODE_HEAT
+            else:
+                self._attr_hvac_mode = const.HVAC_MODE_OFF
 
         self.async_write_ha_state()
