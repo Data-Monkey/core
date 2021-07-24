@@ -78,21 +78,24 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LgTVDevice(MediaPlayerEntity):
     """Representation of a LG TV."""
 
+    _attr_media_content_type = MEDIA_TYPE_CHANNEL
+
     def __init__(self, client, name, on_action_script):
         """Initialize the LG TV device."""
         self._client = client
-        self._name = name
-        self._muted = False
+        self._attr_name = name
+        self._attr_is_volume_muted = False
         self._on_action_script = on_action_script
         # Assume that the TV is in Play mode
         self._playing = True
-        self._volume = 0
-        self._channel_id = None
-        self._channel_name = ""
-        self._program_name = ""
-        self._state = None
+        self._attr_volume_level = 0
+        self._attr_source = ""
+        self._attr_media_title = ""
         self._sources = {}
-        self._source_names = []
+        self._attr_source_list = []
+        self._attr_supported_features = SUPPORT_LGTV
+        if on_action_script:
+            self._attr_supported_features = SUPPORT_LGTV | SUPPORT_TURN_ON
 
     def send_command(self, command):
         """Send remote control commands to the TV."""
@@ -101,7 +104,7 @@ class LgTVDevice(MediaPlayerEntity):
             with self._client as client:
                 client.send_command(command)
         except (LgNetCastError, RequestException):
-            self._state = STATE_OFF
+            self._attr_state = STATE_OFF
 
     @util.Throttle(MIN_TIME_BETWEEN_SCANS, MIN_TIME_BETWEEN_FORCED_SCANS)
     def update(self):
@@ -109,25 +112,27 @@ class LgTVDevice(MediaPlayerEntity):
 
         try:
             with self._client as client:
-                self._state = STATE_PLAYING
+                self._attr_state = STATE_PLAYING
                 volume_info = client.query_data("volume_info")
                 if volume_info:
                     volume_info = volume_info[0]
-                    self._volume = float(volume_info.find("level").text)
-                    self._muted = volume_info.find("mute").text == "true"
+                    self._attr_volume_level = (
+                        float(volume_info.find("level").text) / 100.0
+                    )
+                    self._attr_is_volume_muted = volume_info.find("mute").text == "true"
 
                 channel_info = client.query_data("cur_channel")
                 if channel_info:
                     channel_info = channel_info[0]
                     channel_id = channel_info.find("major")
-                    self._channel_name = channel_info.find("chname").text
-                    self._program_name = channel_info.find("progName").text
+                    self._attr_source = channel_info.find("chname").text
+                    self._attr_media_title = channel_info.find("progName").text
                     if channel_id is not None:
-                        self._channel_id = int(channel_id.text)
-                    if self._channel_name is None:
-                        self._channel_name = channel_info.find("inputSourceName").text
-                    if self._program_name is None:
-                        self._program_name = channel_info.find("labelName").text
+                        self._attr_media_content_id = int(channel_id.text)
+                    if self.source is None:
+                        self._attr_source = channel_info.find("inputSourceName").text
+                    if self.media_title is None:
+                        self._attr_media_title = channel_info.find("labelName").text
 
                 channel_list = client.query_data("channel_list")
                 if channel_list:
@@ -145,66 +150,9 @@ class LgTVDevice(MediaPlayerEntity):
                     sorted_sources = sorted(
                         source_tuples, key=lambda channel: int(channel[1])
                     )
-                    self._source_names = [n for n, k in sorted_sources]
+                    self._attr_source_list = [n for n, k in sorted_sources]
         except (LgNetCastError, RequestException):
-            self._state = STATE_OFF
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
-
-    @property
-    def is_volume_muted(self):
-        """Boolean if volume is currently muted."""
-        return self._muted
-
-    @property
-    def volume_level(self):
-        """Volume level of the media player (0..1)."""
-        return self._volume / 100.0
-
-    @property
-    def source(self):
-        """Return the current input source."""
-        return self._channel_name
-
-    @property
-    def source_list(self):
-        """List of available input sources."""
-        return self._source_names
-
-    @property
-    def media_content_id(self):
-        """Content id of current playing media."""
-        return self._channel_id
-
-    @property
-    def media_content_type(self):
-        """Content type of current playing media."""
-        return MEDIA_TYPE_CHANNEL
-
-    @property
-    def media_channel(self):
-        """Channel currently playing."""
-        return self._channel_name
-
-    @property
-    def media_title(self):
-        """Title of current playing media."""
-        return self._program_name
-
-    @property
-    def supported_features(self):
-        """Flag media player features that are supported."""
-        if self._on_action_script:
-            return SUPPORT_LGTV | SUPPORT_TURN_ON
-        return SUPPORT_LGTV
+            self._attr_state = STATE_OFF
 
     @property
     def media_image_url(self):
@@ -248,13 +196,13 @@ class LgTVDevice(MediaPlayerEntity):
     def media_play(self):
         """Send play command."""
         self._playing = True
-        self._state = STATE_PLAYING
+        self._attr_state = STATE_PLAYING
         self.send_command(33)
 
     def media_pause(self):
         """Send media pause command to media player."""
         self._playing = False
-        self._state = STATE_PAUSED
+        self._attr_state = STATE_PAUSED
         self.send_command(34)
 
     def media_next_track(self):
