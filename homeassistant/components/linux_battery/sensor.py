@@ -70,64 +70,44 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LinuxBatterySensor(SensorEntity):
     """Representation of a Linux Battery sensor."""
 
+    _attr_device_class = DEVICE_CLASS_BATTERY
+    _attr_unit_of_measurement = PERCENTAGE
+
     def __init__(self, name, battery_id, system):
         """Initialize the battery sensor."""
         self._battery = Batteries()
 
-        self._name = name
-        self._battery_stat = None
+        self._attr_name = name
         self._battery_id = battery_id - 1
         self._system = system
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def device_class(self):
-        """Return the device class of the sensor."""
-        return DEVICE_CLASS_BATTERY
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._battery_stat.capacity
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit the value is expressed in."""
-        return PERCENTAGE
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes of the sensor."""
-        if self._system == "android":
-            return {
-                ATTR_NAME: self._battery_stat.name,
-                ATTR_PATH: self._battery_stat.path,
-                ATTR_HEALTH: self._battery_stat.health,
-                ATTR_STATUS: self._battery_stat.status,
-            }
-        return {
-            ATTR_NAME: self._battery_stat.name,
-            ATTR_PATH: self._battery_stat.path,
-            ATTR_ALARM: self._battery_stat.alarm,
-            ATTR_CAPACITY_LEVEL: self._battery_stat.capacity_level,
-            ATTR_CYCLE_COUNT: self._battery_stat.cycle_count,
-            ATTR_ENERGY_FULL: self._battery_stat.energy_full,
-            ATTR_ENERGY_FULL_DESIGN: self._battery_stat.energy_full_design,
-            ATTR_ENERGY_NOW: self._battery_stat.energy_now,
-            ATTR_MANUFACTURER: self._battery_stat.manufacturer,
-            ATTR_MODEL_NAME: self._battery_stat.model_name,
-            ATTR_POWER_NOW: self._battery_stat.power_now,
-            ATTR_SERIAL_NUMBER: self._battery_stat.serial_number,
-            ATTR_STATUS: self._battery_stat.status,
-            ATTR_VOLTAGE_MIN_DESIGN: self._battery_stat.voltage_min_design,
-            ATTR_VOLTAGE_NOW: self._battery_stat.voltage_now,
-        }
 
     def update(self):
         """Get the latest data and updates the states."""
         self._battery.update()
-        self._battery_stat = self._battery.stat[self._battery_id]
+        battery_stat = self._battery.stat[self._battery_id]
+        self._attr_state = battery_stat.capacity
+        if self._system == "android":
+            self._attr_extra_state_attributes = {
+                ATTR_NAME: battery_stat.name,
+                ATTR_PATH: battery_stat.path,
+                ATTR_HEALTH: battery_stat.health,
+                ATTR_STATUS: battery_stat.status,
+            }
+        else:
+            self._attr_extra_state_attributes = {
+                ATTR_NAME: battery_stat.name,
+                ATTR_PATH: battery_stat.path,
+                ATTR_ALARM: battery_stat.alarm,
+                ATTR_CAPACITY_LEVEL: battery_stat.capacity_level,
+                ATTR_CYCLE_COUNT: battery_stat.cycle_count,
+                ATTR_ENERGY_FULL: battery_stat.energy_full,
+                ATTR_ENERGY_FULL_DESIGN: battery_stat.energy_full_design,
+                ATTR_ENERGY_NOW: battery_stat.energy_now,
+                ATTR_MANUFACTURER: battery_stat.manufacturer,
+                ATTR_MODEL_NAME: battery_stat.model_name,
+                ATTR_POWER_NOW: battery_stat.power_now,
+                ATTR_SERIAL_NUMBER: battery_stat.serial_number,
+                ATTR_STATUS: battery_stat.status,
+                ATTR_VOLTAGE_MIN_DESIGN: battery_stat.voltage_min_design,
+                ATTR_VOLTAGE_NOW: battery_stat.voltage_now,
+            }
