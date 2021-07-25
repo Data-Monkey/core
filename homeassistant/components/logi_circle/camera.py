@@ -39,7 +39,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     devices = await hass.data[LOGI_CIRCLE_DOMAIN].cameras
     ffmpeg = hass.data[DATA_FFMPEG]
 
-    cameras = [LogiCam(device, entry, ffmpeg) for device in devices]
+    cameras = [LogiCam(device, ffmpeg) for device in devices]
 
     async_add_entities(cameras, True)
 
@@ -47,12 +47,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class LogiCam(Camera):
     """An implementation of a Logi Circle camera."""
 
-    def __init__(self, camera, device_info, ffmpeg):
+    _attr_supported_features = SUPPORT_ON_OFF
+
+    def __init__(self, camera, ffmpeg):
         """Initialize Logi Circle camera."""
         super().__init__()
         self._camera = camera
-        self._name = self._camera.name
-        self._id = self._camera.mac_address
+        self._attr_name = self._camera.name
+        self._attr_unique_id = self._camera.mac_address
         self._has_battery = self._camera.supports_feature("battery_level")
         self._ffmpeg = ffmpeg
         self._listeners = []
@@ -97,21 +99,6 @@ class LogiCam(Camera):
         """Disconnect dispatcher listeners when removed."""
         for detach in self._listeners:
             detach()
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self._id
-
-    @property
-    def name(self):
-        """Return the name of this camera."""
-        return self._name
-
-    @property
-    def supported_features(self):
-        """Logi Circle camera's support turning on and off ("soft" switch)."""
-        return SUPPORT_ON_OFF
 
     @property
     def device_info(self):
