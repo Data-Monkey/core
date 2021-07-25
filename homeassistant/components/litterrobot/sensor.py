@@ -44,10 +44,7 @@ class LitterRobotPropertySensor(LitterRobotEntity, SensorEntity):
 class LitterRobotWasteSensor(LitterRobotPropertySensor):
     """Litter-Robot waste sensor."""
 
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return unit of measurement."""
-        return PERCENTAGE
+    _attr_unit_of_measurement = PERCENTAGE
 
     @property
     def icon(self) -> str:
@@ -58,17 +55,14 @@ class LitterRobotWasteSensor(LitterRobotPropertySensor):
 class LitterRobotSleepTimeSensor(LitterRobotPropertySensor):
     """Litter-Robot sleep time sensor."""
 
+    _attr_device_class = DEVICE_CLASS_TIMESTAMP
+
     @property
     def state(self) -> str | None:
         """Return the state."""
         if self.robot.sleep_mode_enabled:
             return super().state.isoformat()
         return None
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class, if any."""
-        return DEVICE_CLASS_TIMESTAMP
 
 
 ROBOT_SENSORS: list[tuple[type[LitterRobotPropertySensor], str, str]] = [
