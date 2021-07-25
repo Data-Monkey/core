@@ -182,16 +182,16 @@ def state(new_state):
 
             pipeline = Pipeline()
             transition_time = DEFAULT_TRANSITION
-            if self._effect == EFFECT_COLORLOOP:
+            if self.effect == EFFECT_COLORLOOP:
                 self.group.stop()
-            self._effect = None
+            self._attr_effect = None
             # Set transition time.
             if ATTR_TRANSITION in kwargs:
                 transition_time = int(kwargs[ATTR_TRANSITION])
             # Do group type-specific work.
             function(self, transition_time, pipeline, **kwargs)
             # Update state.
-            self._is_on = new_state
+            self._attr_is_on = new_state
             self.group.enqueue(pipeline)
             self.schedule_update_ha_state()
 
@@ -203,77 +203,52 @@ def state(new_state):
 class LimitlessLEDGroup(LightEntity, RestoreEntity):
     """Representation of a LimitessLED group."""
 
+    _attr_assumed_state = True
+    _attr_max_mireds = 370
+    _attr_min_mireds = 154
+    _attr_should_poll = False
+
     def __init__(self, group, config):
         """Initialize a group."""
 
         if isinstance(group, WhiteGroup):
-            self._supported = SUPPORT_LIMITLESSLED_WHITE
-            self._effect_list = [EFFECT_NIGHT]
+            self._attr_supported_features = SUPPORT_LIMITLESSLED_WHITE
+            self._attr_effect_list = [EFFECT_NIGHT]
         elif isinstance(group, DimmerGroup):
-            self._supported = SUPPORT_LIMITLESSLED_DIMMER
-            self._effect_list = []
+            self._attr_supported_features = SUPPORT_LIMITLESSLED_DIMMER
+            self._attr_effect_list = []
         elif isinstance(group, RgbwGroup):
-            self._supported = SUPPORT_LIMITLESSLED_RGB
-            self._effect_list = [EFFECT_COLORLOOP, EFFECT_NIGHT, EFFECT_WHITE]
+            self._attr_supported_features = SUPPORT_LIMITLESSLED_RGB
+            self._attr_effect_list = [EFFECT_COLORLOOP, EFFECT_NIGHT, EFFECT_WHITE]
         elif isinstance(group, RgbwwGroup):
-            self._supported = SUPPORT_LIMITLESSLED_RGBWW
-            self._effect_list = [EFFECT_COLORLOOP, EFFECT_NIGHT, EFFECT_WHITE]
+            self._attr_supported_features = SUPPORT_LIMITLESSLED_RGBWW
+            self._attr_effect_list = [EFFECT_COLORLOOP, EFFECT_NIGHT, EFFECT_WHITE]
 
         self.group = group
         self.config = config
-        self._is_on = False
+        self._attr_is_on = False
         self._brightness = None
         self._temperature = None
         self._color = None
-        self._effect = None
+        self._attr_name = group.name
 
     async def async_added_to_hass(self):
         """Handle entity about to be added to hass event."""
         await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
         if last_state:
-            self._is_on = last_state.state == STATE_ON
+            self._attr_is_on = last_state.state == STATE_ON
             self._brightness = last_state.attributes.get("brightness")
             self._temperature = last_state.attributes.get("color_temp")
             self._color = last_state.attributes.get("hs_color")
 
     @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def assumed_state(self):
-        """Return True because unable to access real state of the entity."""
-        return True
-
-    @property
-    def name(self):
-        """Return the name of the group."""
-        return self.group.name
-
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self._is_on
-
-    @property
     def brightness(self):
         """Return the brightness property."""
-        if self._effect == EFFECT_NIGHT:
+        if self.effect == EFFECT_NIGHT:
             return 1
 
         return self._brightness
-
-    @property
-    def min_mireds(self):
-        """Return the coldest color_temp that this light supports."""
-        return 154
-
-    @property
-    def max_mireds(self):
-        """Return the warmest color_temp that this light supports."""
-        return 370
 
     @property
     def color_temp(self):
@@ -285,28 +260,13 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
     @property
     def hs_color(self):
         """Return the color property."""
-        if self._effect == EFFECT_NIGHT:
+        if self.effect == EFFECT_NIGHT:
             return None
 
         if self._color is None or self._color[1] == 0:
             return None
 
         return self._color
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return self._supported
-
-    @property
-    def effect(self):
-        """Return the current effect for this light."""
-        return self._effect
-
-    @property
-    def effect_list(self):
-        """Return the list of supported effects for this light."""
-        return self._effect_list
 
     # pylint: disable=arguments-differ
     @state(False)
@@ -322,9 +282,9 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
         """Turn on (or adjust property of) a group."""
         # The night effect does not need a turned on light
         if kwargs.get(ATTR_EFFECT) == EFFECT_NIGHT:
-            if EFFECT_NIGHT in self._effect_list:
+            if EFFECT_NIGHT in self.effect_list:
                 pipeline.night_light()
-                self._effect = EFFECT_NIGHT
+                self._attr_effect = EFFECT_NIGHT
             return
 
         pipeline.on()
@@ -338,7 +298,7 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
             self._brightness = kwargs[ATTR_BRIGHTNESS]
             args["brightness"] = self.limitlessled_brightness()
 
-        if ATTR_HS_COLOR in kwargs and self._supported & SUPPORT_COLOR:
+        if ATTR_HS_COLOR in kwargs and self.supported_features & SUPPORT_COLOR:
             self._color = kwargs[ATTR_HS_COLOR]
             # White is a special case.
             if self._color[1] < MIN_SATURATION:
@@ -348,10 +308,10 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
                 args["color"] = self.limitlessled_color()
 
         if ATTR_COLOR_TEMP in kwargs:
-            if self._supported & SUPPORT_COLOR:
+            if self.supported_features & SUPPORT_COLOR:
                 pipeline.white()
             self._color = WHITE
-            if self._supported & SUPPORT_COLOR_TEMP:
+            if self.supported_features & SUPPORT_COLOR_TEMP:
                 self._temperature = kwargs[ATTR_COLOR_TEMP]
                 args["temperature"] = self.limitlessled_temperature()
 
@@ -359,16 +319,16 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
             pipeline.transition(transition_time, **args)
 
         # Flash.
-        if ATTR_FLASH in kwargs and self._supported & SUPPORT_FLASH:
+        if ATTR_FLASH in kwargs and self.supported_features & SUPPORT_FLASH:
             duration = 0
             if kwargs[ATTR_FLASH] == FLASH_LONG:
                 duration = 1
             pipeline.flash(duration=duration)
 
         # Add effects.
-        if ATTR_EFFECT in kwargs and self._effect_list:
+        if ATTR_EFFECT in kwargs and self.effect_list:
             if kwargs[ATTR_EFFECT] == EFFECT_COLORLOOP:
-                self._effect = EFFECT_COLORLOOP
+                self._attr_effect = EFFECT_COLORLOOP
                 pipeline.append(COLORLOOP)
             if kwargs[ATTR_EFFECT] == EFFECT_WHITE:
                 pipeline.white()
