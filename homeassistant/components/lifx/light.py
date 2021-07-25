@@ -444,21 +444,32 @@ def convert_16_to_8(value):
 class LIFXLight(LightEntity):
     """Representation of a LIFX light."""
 
+    _attr_available = True
+
     def __init__(self, bulb, effects_conductor):
         """Initialize the light."""
         self.bulb = bulb
         self.effects_conductor = effects_conductor
-        self.registered = True
         self.postponed_update = None
         self.lock = asyncio.Lock()
-
-    @property
-    def device_info(self):
-        """Return information about the device."""
+        self._attr_name = bulb.label
+        self._attr_unique_id = bulb.mac_addr
+        bulb_features = lifx_features(bulb)
+        self._attr_min_mireds = math.floor(
+            color_util.color_temperature_kelvin_to_mired(bulb_features["max_kelvin"])
+        )
+        self._attr_max_mireds = math.ceil(
+            color_util.color_temperature_kelvin_to_mired(bulb_features["min_kelvin"])
+        )
+        self._attr_supported_features = (
+            SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION | SUPPORT_EFFECT
+        )
+        if bulb_features["min_kelvin"] != bulb_features["max_kelvin"]:
+            self._attr_supported_features |= SUPPORT_COLOR_TEMP
         info = {
-            "identifiers": {(LIFX_DOMAIN, self.unique_id)},
+            "identifiers": {(LIFX_DOMAIN, bulb.mac_addr)},
             "name": self.name,
-            "connections": {(dr.CONNECTION_NETWORK_MAC, self.bulb.mac_addr)},
+            "connections": {(dr.CONNECTION_NETWORK_MAC, bulb.mac_addr)},
             "manufacturer": "LIFX",
         }
 
@@ -472,50 +483,12 @@ class LIFXLight(LightEntity):
         if model is not None:
             info["model"] = model
 
-        return info
-
-    @property
-    def available(self):
-        """Return the availability of the bulb."""
-        return self.registered
-
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self.bulb.mac_addr
-
-    @property
-    def name(self):
-        """Return the name of the bulb."""
-        return self.bulb.label
+        self._attr_device_info = info
 
     @property
     def who(self):
         """Return a string identifying the bulb."""
         return f"{self.bulb.ip_addr} ({self.name})"
-
-    @property
-    def min_mireds(self):
-        """Return the coldest color_temp that this light supports."""
-        kelvin = lifx_features(self.bulb)["max_kelvin"]
-        return math.floor(color_util.color_temperature_kelvin_to_mired(kelvin))
-
-    @property
-    def max_mireds(self):
-        """Return the warmest color_temp that this light supports."""
-        kelvin = lifx_features(self.bulb)["min_kelvin"]
-        return math.ceil(color_util.color_temperature_kelvin_to_mired(kelvin))
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        support = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION | SUPPORT_EFFECT
-
-        bulb_features = lifx_features(self.bulb)
-        if bulb_features["min_kelvin"] != bulb_features["max_kelvin"]:
-            support |= SUPPORT_COLOR_TEMP
-
-        return support
 
     @property
     def brightness(self):
@@ -655,26 +628,19 @@ class LIFXLight(LightEntity):
 class LIFXWhite(LIFXLight):
     """Representation of a white-only LIFX light."""
 
-    @property
-    def effect_list(self):
-        """Return the list of supported effects for this light."""
-        return [SERVICE_EFFECT_PULSE, SERVICE_EFFECT_STOP]
+    _attr_effect_list = [SERVICE_EFFECT_PULSE, SERVICE_EFFECT_STOP]
 
 
 class LIFXColor(LIFXLight):
     """Representation of a color LIFX light."""
 
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        support = super().supported_features
-        support |= SUPPORT_COLOR
-        return support
-
-    @property
-    def effect_list(self):
-        """Return the list of supported effects for this light."""
-        return [SERVICE_EFFECT_COLORLOOP, SERVICE_EFFECT_PULSE, SERVICE_EFFECT_STOP]
+    _attr_effect_list = [
+        SERVICE_EFFECT_COLORLOOP,
+        SERVICE_EFFECT_PULSE,
+        SERVICE_EFFECT_STOP,
+    ]
+    _attr_supported_features = super().supported_features
+    _attr_supported_features |= SUPPORT_COLOR
 
     @property
     def hs_color(self):
