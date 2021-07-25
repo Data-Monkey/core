@@ -84,32 +84,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LoopEnergySensor(SensorEntity):
     """Implementation of an Loop Energy base sensor."""
 
+    _attr_unit_of_measurement = DEFAULT_UNIT
+    _attr_should_poll = False
+
     def __init__(self, controller):
         """Initialize the sensor."""
-        self._state = None
-        self._unit_of_measurement = DEFAULT_UNIT
         self._controller = controller
-        self._name = None
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit_of_measurement
 
     def _callback(self):
         self.schedule_update_ha_state(True)
@@ -118,10 +98,7 @@ class LoopEnergySensor(SensorEntity):
 class LoopEnergyElec(LoopEnergySensor):
     """Implementation of an Loop Energy Electricity sensor."""
 
-    def __init__(self, controller):
-        """Initialize the sensor."""
-        super().__init__(controller)
-        self._name = "Power Usage"
+    _attr_name = "Power Usage"
 
     async def async_added_to_hass(self):
         """Subscribe to updates."""
@@ -129,16 +106,13 @@ class LoopEnergyElec(LoopEnergySensor):
 
     def update(self):
         """Get the cached Loop energy reading."""
-        self._state = round(self._controller.electricity_useage, 2)
+        self._attr_state = round(self._controller.electricity_useage, 2)
 
 
 class LoopEnergyGas(LoopEnergySensor):
     """Implementation of an Loop Energy Gas sensor."""
 
-    def __init__(self, controller):
-        """Initialize the sensor."""
-        super().__init__(controller)
-        self._name = "Gas Usage"
+    _attr_name = "Gas Usage"
 
     async def async_added_to_hass(self):
         """Subscribe to updates."""
@@ -146,4 +120,4 @@ class LoopEnergyGas(LoopEnergySensor):
 
     def update(self):
         """Get the cached Loop gas reading."""
-        self._state = round(self._controller.gas_useage, 2)
+        self._attr_state = round(self._controller.gas_useage, 2)
