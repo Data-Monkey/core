@@ -34,13 +34,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LiteJetLight(LightEntity):
     """Representation of a single LiteJet light."""
 
+    _attr_should_poll = False
+    _attr_supported_features = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
+
     def __init__(self, config_entry, lj, i, name):
         """Initialize a LiteJet light."""
         self._config_entry = config_entry
         self._lj = lj
         self._index = i
-        self._brightness = 0
-        self._name = name
+        self._attr_brightness = 0
+        self._attr_is_on = False
+        self._attr_name = name
+        self._attr_unique_id = f"{config_entry.entry_id}_{i}"
+        self._attr_extra_state_attributes = {ATTR_NUMBER: i}
 
     async def async_added_to_hass(self):
         """Run when this Entity has been added to HA."""
@@ -53,43 +59,8 @@ class LiteJetLight(LightEntity):
 
     def _on_load_changed(self):
         """Handle state changes."""
-        _LOGGER.debug("Updating due to notification for %s", self._name)
+        _LOGGER.debug("Updating due to notification for %s", self.name)
         self.schedule_update_ha_state(True)
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
-
-    @property
-    def name(self):
-        """Return the light's name."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique identifier for this light."""
-        return f"{self._config_entry.entry_id}_{self._index}"
-
-    @property
-    def brightness(self):
-        """Return the light's brightness."""
-        return self._brightness
-
-    @property
-    def is_on(self):
-        """Return if the light is on."""
-        return self._brightness != 0
-
-    @property
-    def should_poll(self):
-        """Return that lights do not require polling."""
-        return False
-
-    @property
-    def extra_state_attributes(self):
-        """Return the device state attributes."""
-        return {ATTR_NUMBER: self._index}
 
     def turn_on(self, **kwargs):
         """Turn on the light."""
@@ -122,4 +93,5 @@ class LiteJetLight(LightEntity):
 
     def update(self):
         """Retrieve the light's brightness from the LiteJet system."""
-        self._brightness = int(self._lj.get_load_level(self._index) / 99 * 255)
+        self._attr_brightness = int(self._lj.get_load_level(self._index) / 99 * 255)
+        self._attr_is_on = self.brightness != 0

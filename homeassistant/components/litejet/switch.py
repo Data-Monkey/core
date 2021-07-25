@@ -28,13 +28,17 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LiteJetSwitch(SwitchEntity):
     """Representation of a single LiteJet switch."""
 
+    _attr_entity_registry_enabled_default = False
+    _attr_should_poll = False
+
     def __init__(self, entry_id, lj, i, name):
         """Initialize a LiteJet switch."""
-        self._entry_id = entry_id
         self._lj = lj
         self._index = i
-        self._state = False
-        self._name = name
+        self._attr_is_on = False
+        self._attr_name = name
+        self._attr_unique_id = f"{entry_id}_{i}"
+        self._attr_extra_state_attributes = {ATTR_NUMBER: i}
 
     async def async_added_to_hass(self):
         """Run when this Entity has been added to HA."""
@@ -47,39 +51,14 @@ class LiteJetSwitch(SwitchEntity):
         self._lj.unsubscribe(self._on_switch_released)
 
     def _on_switch_pressed(self):
-        _LOGGER.debug("Updating pressed for %s", self._name)
-        self._state = True
+        _LOGGER.debug("Updating pressed for %s", self.name)
+        self._attr_is_on = True
         self.schedule_update_ha_state()
 
     def _on_switch_released(self):
-        _LOGGER.debug("Updating released for %s", self._name)
-        self._state = False
+        _LOGGER.debug("Updating released for %s", self.name)
+        self._attr_is_on = False
         self.schedule_update_ha_state()
-
-    @property
-    def name(self):
-        """Return the name of the switch."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique identifier for this switch."""
-        return f"{self._entry_id}_{self._index}"
-
-    @property
-    def is_on(self):
-        """Return if the switch is pressed."""
-        return self._state
-
-    @property
-    def should_poll(self):
-        """Return that polling is not necessary."""
-        return False
-
-    @property
-    def extra_state_attributes(self):
-        """Return the device-specific state attributes."""
-        return {ATTR_NUMBER: self._index}
 
     def turn_on(self, **kwargs):
         """Press the switch."""
@@ -88,8 +67,3 @@ class LiteJetSwitch(SwitchEntity):
     def turn_off(self, **kwargs):
         """Release the switch."""
         self._lj.release_switch(self._index)
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Switches are only enabled by explicit user choice."""
-        return False
