@@ -227,7 +227,6 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
         self.group = group
         self.config = config
         self._attr_is_on = False
-        self._brightness = None
         self._temperature = None
         self._color = None
         self._attr_name = group.name
@@ -238,17 +237,9 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
         last_state = await self.async_get_last_state()
         if last_state:
             self._attr_is_on = last_state.state == STATE_ON
-            self._brightness = last_state.attributes.get("brightness")
+            self._attr_brightness = last_state.attributes.get("brightness")
             self._temperature = last_state.attributes.get("color_temp")
             self._color = last_state.attributes.get("hs_color")
-
-    @property
-    def brightness(self):
-        """Return the brightness property."""
-        if self.effect == EFFECT_NIGHT:
-            return 1
-
-        return self._brightness
 
     @property
     def color_temp(self):
@@ -285,17 +276,18 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
             if EFFECT_NIGHT in self.effect_list:
                 pipeline.night_light()
                 self._attr_effect = EFFECT_NIGHT
+                self._attr_brightness = 1
             return
 
         pipeline.on()
 
         # Set up transition.
         args = {}
-        if self.config[CONF_FADE] and not self.is_on and self._brightness:
+        if self.config[CONF_FADE] and not self.is_on and self.brightness:
             args["brightness"] = self.limitlessled_brightness()
 
         if ATTR_BRIGHTNESS in kwargs:
-            self._brightness = kwargs[ATTR_BRIGHTNESS]
+            self._attr_brightness = kwargs[ATTR_BRIGHTNESS]
             args["brightness"] = self.limitlessled_brightness()
 
         if ATTR_HS_COLOR in kwargs and self.supported_features & SUPPORT_COLOR:
@@ -345,7 +337,7 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
 
     def limitlessled_brightness(self):
         """Convert Home Assistant brightness units to percentage."""
-        return self._brightness / 255
+        return self.brightness / 255
 
     def limitlessled_color(self):
         """Convert Home Assistant HS list to RGB Color tuple."""
