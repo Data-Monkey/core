@@ -72,13 +72,8 @@ class LifxCloudScene(Scene):
         self.hass = hass
         self._headers = headers
         self._timeout = timeout
-        self._name = scene_data["name"]
+        self._attr_name = scene_data["name"]
         self._uuid = scene_data["uuid"]
-
-    @property
-    def name(self):
-        """Return the name of the scene."""
-        return self._name
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""
