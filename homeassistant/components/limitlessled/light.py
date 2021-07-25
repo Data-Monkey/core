@@ -248,17 +248,6 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
             return None
         return self._temperature
 
-    @property
-    def hs_color(self):
-        """Return the color property."""
-        if self.effect == EFFECT_NIGHT:
-            return None
-
-        if self._color is None or self._color[1] == 0:
-            return None
-
-        return self._color
-
     # pylint: disable=arguments-differ
     @state(False)
     def turn_off(self, transition_time, pipeline, **kwargs):
@@ -325,6 +314,10 @@ class LimitlessLEDGroup(LightEntity, RestoreEntity):
             if kwargs[ATTR_EFFECT] == EFFECT_WHITE:
                 pipeline.white()
                 self._color = WHITE
+        if self._color is None or self._color[1] == 0 or self.effect == EFFECT_NIGHT:
+            self._attr_hs_color = None
+        else:
+            self._attr_hs_color = self._color
 
     def limitlessled_temperature(self):
         """Convert Home Assistant color temperature units to percentage."""
