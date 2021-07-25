@@ -75,12 +75,8 @@ class LupusecDevice(Entity):
         """Initialize a sensor for Lupusec device."""
         self._data = data
         self._device = device
+        self._attr_name = device.name
 
     def update(self):
         """Update automation state."""
         self._device.refresh()
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._device.name

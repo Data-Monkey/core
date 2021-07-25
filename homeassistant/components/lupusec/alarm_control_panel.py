@@ -35,10 +35,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LupusecAlarm(LupusecDevice, AlarmControlPanelEntity):
     """An alarm_control_panel implementation for Lupusec."""
 
-    @property
-    def icon(self):
-        """Return the icon."""
-        return ICON
+    _attr_icon = ICON
+    _attr_supported_features = SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY
 
     @property
     def state(self):
@@ -54,11 +52,6 @@ class LupusecAlarm(LupusecDevice, AlarmControlPanelEntity):
         else:
             state = None
         return state
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_ALARM_ARM_HOME | SUPPORT_ALARM_ARM_AWAY
 
     def alarm_arm_away(self, code=None):
         """Send arm away command."""
