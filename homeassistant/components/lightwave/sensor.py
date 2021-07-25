@@ -31,25 +31,14 @@ class LightwaveBattery(SensorEntity):
 
     def __init__(self, name, lwlink, serial):
         """Initialize the Lightwave Trv battery sensor."""
-        self._name = name
-        self._state = None
+        self._attr_name = name
         self._lwlink = lwlink
         self._serial = serial
         self._attr_unique_id = f"{serial}-trv-battery"
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
 
     def update(self):
         """Communicate with a Lightwave RTF Proxy to get state."""
         (dummy_temp, dummy_targ, battery, dummy_output) = self._lwlink.read_trv_status(
             self._serial
         )
-        self._state = battery
+        self._attr_state = battery
