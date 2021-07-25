@@ -32,7 +32,7 @@ class LocativeEntity(TrackerEntity):
 
     def __init__(self, device, location, location_name):
         """Set up Locative entity."""
-        self._name = device
+        self._attr_name = device
         self._location = location
         self._location_name = location_name
         self._unsub_dispatcher = None
@@ -53,11 +53,6 @@ class LocativeEntity(TrackerEntity):
         return self._location_name
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
-
-    @property
     def source_type(self):
         """Return the source type, eg gps or router, of the device."""
         return SOURCE_TYPE_GPS
@@ -75,7 +70,7 @@ class LocativeEntity(TrackerEntity):
     @callback
     def _async_receive_data(self, device, location, location_name):
         """Update device data."""
-        if device != self._name:
+        if device != self.name:
             return
         self._location_name = location_name
         self._location = location
