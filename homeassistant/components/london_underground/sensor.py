@@ -53,37 +53,18 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LondonTubeSensor(SensorEntity):
     """Sensor that reads the status of a line from Tube Data."""
 
+    _attr_icon = ICON
+
     def __init__(self, name, data):
         """Initialize the London Underground sensor."""
         self._data = data
-        self._description = None
-        self._name = name
-        self._state = None
-        self.attrs = {ATTR_ATTRIBUTION: ATTRIBUTION}
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return ICON
-
-    @property
-    def extra_state_attributes(self):
-        """Return other details about the sensor state."""
-        self.attrs["Description"] = self._description
-        return self.attrs
+        self._attr_name = name
+        self._attr_extra_state_attributes = {ATTR_ATTRIBUTION: ATTRIBUTION}
 
     def update(self):
         """Update the sensor."""
         self._data.update()
-        self._state = self._data.data[self.name]["State"]
-        self._description = self._data.data[self.name]["Description"]
+        self._attr_state = self._data.data[self.name]["State"]
+        self._attr_extra_state_attributes["Description"] = self._data.data[self.name][
+            "Description"
+        ]
