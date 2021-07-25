@@ -65,9 +65,9 @@ class LocalFile(Camera):
         """Initialize Local File Camera component."""
         super().__init__()
 
-        self._name = name
+        self._attr_name = name
         self.check_file_path_access(file_path)
-        self._file_path = file_path
+        self._attr_extra_state_attributes = {"file_path": file_path}
         # Set content type of local file
         content, _ = mimetypes.guess_type(file_path)
         if content is not None:
@@ -76,34 +76,24 @@ class LocalFile(Camera):
     def camera_image(self):
         """Return image response."""
         try:
-            with open(self._file_path, "rb") as file:
+            with open(self.extra_state_attributes["file_path"], "rb") as file:
                 return file.read()
         except FileNotFoundError:
             _LOGGER.warning(
                 "Could not read camera %s image from file: %s",
-                self._name,
-                self._file_path,
+                self.name,
+                self.extra_state_attributes["file_path"],
             )
 
     def check_file_path_access(self, file_path):
         """Check that filepath given is readable."""
         if not os.access(file_path, os.R_OK):
             _LOGGER.warning(
-                "Could not read camera %s image from file: %s", self._name, file_path
+                "Could not read camera %s image from file: %s", self.name, file_path
             )
 
     def update_file_path(self, file_path):
         """Update the file_path."""
         self.check_file_path_access(file_path)
-        self._file_path = file_path
+        self._attr_extra_state_attributes = {"file_path": file_path}
         self.schedule_update_ha_state()
-
-    @property
-    def name(self):
-        """Return the name of this camera."""
-        return self._name
-
-    @property
-    def extra_state_attributes(self):
-        """Return the camera state attributes."""
-        return {"file_path": self._file_path}
