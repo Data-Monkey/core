@@ -92,60 +92,41 @@ class APIData:
 class AirSensor(SensorEntity):
     """Single authority air sensor."""
 
-    ICON = "mdi:cloud-outline"
+    _attr_icon = "mdi:cloud-outline"
 
     def __init__(self, name, APIdata):
         """Initialize the sensor."""
-        self._name = name
+        self._attr_name = name
         self._api_data = APIdata
         self._site_data = None
-        self._state = None
         self._updated = None
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
 
     @property
     def site_data(self):
         """Return the dict of sites data."""
         return self._site_data
 
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return self.ICON
-
-    @property
-    def extra_state_attributes(self):
-        """Return other details about the sensor state."""
-        attrs = {}
-        attrs["updated"] = self._updated
-        attrs["sites"] = len(self._site_data) if self._site_data is not None else 0
-        attrs["data"] = self._site_data
-        return attrs
-
     def update(self):
         """Update the sensor."""
         sites_status = []
         self._api_data.update()
         if self._api_data.data:
-            self._site_data = self._api_data.data[self._name]
+            self._site_data = self._api_data.data[self.name]
             self._updated = self._site_data[0]["updated"]
             for site in self._site_data:
                 if site["pollutants_status"] != "no_species_data":
                     sites_status.append(site["pollutants_status"])
 
         if sites_status:
-            self._state = max(set(sites_status), key=sites_status.count)
+            self._attr_state = max(set(sites_status), key=sites_status.count)
         else:
-            self._state = None
+            self._attr_state = None
+
+        attrs = {}
+        attrs["updated"] = self._updated
+        attrs["sites"] = len(self._site_data) if self._site_data is not None else 0
+        attrs["data"] = self._site_data
+        self._attr_extra_state_attributes = attrs
 
 
 def parse_species(species_data):
