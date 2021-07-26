@@ -102,11 +102,13 @@ def setup(hass, base_config):
 class LutronDevice(Entity):
     """Representation of a Lutron device entity."""
 
-    def __init__(self, area_name, lutron_device, controller):
+    _attr_should_poll = False
+
+    def __init__(self, area_name, lutron_device):
         """Initialize the device."""
         self._lutron_device = lutron_device
-        self._controller = controller
         self._area_name = area_name
+        self._attr_name = f"{area_name} {lutron_device.name}"
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -117,16 +119,6 @@ class LutronDevice(Entity):
     def _update_callback(self, _device, _context, _event, _params):
         """Run when invoked by pylutron when the device state changes."""
         self.schedule_update_ha_state()
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return f"{self._area_name} {self._lutron_device.name}"
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False
 
 
 class LutronButton:

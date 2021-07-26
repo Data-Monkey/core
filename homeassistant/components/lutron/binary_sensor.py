@@ -6,7 +6,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 
-from . import LUTRON_CONTROLLER, LUTRON_DEVICES, LutronDevice
+from . import LUTRON_DEVICES, LutronDevice
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -15,7 +15,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         return
     devs = []
     for (area_name, device) in hass.data[LUTRON_DEVICES]["binary_sensor"]:
-        dev = LutronOccupancySensor(area_name, device, hass.data[LUTRON_CONTROLLER])
+        dev = LutronOccupancySensor(area_name, device)
         devs.append(dev)
 
     add_entities(devs)
@@ -31,19 +31,16 @@ class LutronOccupancySensor(LutronDevice, BinarySensorEntity):
 
     _attr_device_class = DEVICE_CLASS_OCCUPANCY
 
+    def __init__(self, area_name, lutron_device):
+        """Initialize a Lutron Occupancy Group."""
+        super().__init__(area_name, lutron_device)
+        self._attr_name = f"{self._area_name} Occupancy"
+
     @property
     def is_on(self):
         """Return true if the binary sensor is on."""
         # Error cases will end up treated as unoccupied.
         return self._lutron_device.state == OccupancyGroup.State.OCCUPIED
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        # The default LutronDevice naming would create 'Kitchen Occ Kitchen',
-        # but since there can only be one OccupancyGroup per area we go
-        # with something shorter.
-        return f"{self._area_name} Occupancy"
 
     @property
     def extra_state_attributes(self):

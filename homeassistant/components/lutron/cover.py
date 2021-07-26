@@ -9,7 +9,7 @@ from homeassistant.components.cover import (
     CoverEntity,
 )
 
-from . import LUTRON_CONTROLLER, LUTRON_DEVICES, LutronDevice
+from . import LUTRON_DEVICES, LutronDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Lutron shades."""
     devs = []
     for (area_name, device) in hass.data[LUTRON_DEVICES]["cover"]:
-        dev = LutronCover(area_name, device, hass.data[LUTRON_CONTROLLER])
+        dev = LutronCover(area_name, device)
         devs.append(dev)
 
     add_entities(devs, True)
@@ -28,20 +28,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LutronCover(LutronDevice, CoverEntity):
     """Representation of a Lutron shade."""
 
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
-
-    @property
-    def is_closed(self):
-        """Return if the cover is closed."""
-        return self._lutron_device.last_level() < 1
-
-    @property
-    def current_cover_position(self):
-        """Return the current position of cover."""
-        return self._lutron_device.last_level()
+    _attr_supported_features = SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_SET_POSITION
 
     def close_cover(self, **kwargs):
         """Close the cover."""
@@ -62,8 +49,8 @@ class LutronCover(LutronDevice, CoverEntity):
         # Reading the property (rather than last_level()) fetches value
         level = self._lutron_device.level
         _LOGGER.debug("Lutron ID: %d updated to %f", self._lutron_device.id, level)
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return {"lutron_integration_id": self._lutron_device.id}
+        self._attr_current_cover_position = self._lutron_device.last_level()
+        self._attr_is_closed = self.current_cover_position < 1
+        self._attr_extra_state_attributes = {
+            "lutron_integration_id": self._lutron_device.id
+        }

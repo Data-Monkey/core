@@ -5,14 +5,14 @@ from homeassistant.components.light import (
     LightEntity,
 )
 
-from . import LUTRON_CONTROLLER, LUTRON_DEVICES, LutronDevice
+from . import LUTRON_DEVICES, LutronDevice
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the Lutron lights."""
     devs = []
     for (area_name, device) in hass.data[LUTRON_DEVICES]["light"]:
-        dev = LutronLight(area_name, device, hass.data[LUTRON_CONTROLLER])
+        dev = LutronLight(area_name, device)
         devs.append(dev)
 
     add_entities(devs, True)
@@ -31,23 +31,12 @@ def to_hass_level(level):
 class LutronLight(LutronDevice, LightEntity):
     """Representation of a Lutron Light, including dimmable."""
 
-    def __init__(self, area_name, lutron_device, controller):
+    _attr_supported_features = SUPPORT_BRIGHTNESS
+
+    def __init__(self, area_name, lutron_device):
         """Initialize the light."""
         self._prev_brightness = None
-        super().__init__(area_name, lutron_device, controller)
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS
-
-    @property
-    def brightness(self):
-        """Return the brightness of the light."""
-        new_brightness = to_hass_level(self._lutron_device.last_level())
-        if new_brightness != 0:
-            self._prev_brightness = new_brightness
-        return new_brightness
+        super().__init__(area_name, lutron_device)
 
     def turn_on(self, **kwargs):
         """Turn the light on."""
@@ -64,17 +53,14 @@ class LutronLight(LutronDevice, LightEntity):
         """Turn the light off."""
         self._lutron_device.level = 0
 
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return {"lutron_integration_id": self._lutron_device.id}
-
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self._lutron_device.last_level() > 0
-
     def update(self):
         """Call when forcing a refresh of the device."""
         if self._prev_brightness is None:
             self._prev_brightness = to_hass_level(self._lutron_device.level)
+        self._attr_is_on = self._lutron_device.last_level() > 0
+        self._attr_extra_state_attributes = {
+            "lutron_integration_id": self._lutron_device.id
+        }
+        self._attr_brightness = to_hass_level(self._lutron_device.last_level())
+        if self.brightness != 0:
+            self._prev_brightness = self.brightness
