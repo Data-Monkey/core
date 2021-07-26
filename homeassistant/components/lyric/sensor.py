@@ -83,20 +83,9 @@ class LyricSensor(LyricDeviceEntity, SensorEntity):
         unit_of_measurement: str = None,
     ) -> None:
         """Initialize Honeywell Lyric sensor."""
-        self._device_class = device_class
-        self._unit_of_measurement = unit_of_measurement
-
         super().__init__(coordinator, location, device, key, name, icon)
-
-    @property
-    def device_class(self) -> str:
-        """Return the device class of the sensor."""
-        return self._device_class
-
-    @property
-    def unit_of_measurement(self) -> str:
-        """Return the unit this state is expressed in."""
-        return self._unit_of_measurement
+        self._attr_device_class = device_class
+        self._attr_unit_of_measurement = unit_of_measurement
 
 
 class LyricIndoorTemperatureSensor(LyricSensor):

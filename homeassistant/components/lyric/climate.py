@@ -117,6 +117,15 @@ async def async_setup_entry(
 class LyricClimate(LyricDeviceEntity, ClimateEntity):
     """Defines a Honeywell Lyric climate entity."""
 
+    _attr_preset_modes = [
+        PRESET_NO_HOLD,
+        PRESET_HOLD_UNTIL,
+        PRESET_PERMANENT_HOLD,
+        PRESET_TEMPORARY_HOLD,
+        PRESET_VACATION_HOLD,
+    ]
+    _attr_supported_features = SUPPORT_FLAGS
+
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
@@ -125,23 +134,23 @@ class LyricClimate(LyricDeviceEntity, ClimateEntity):
         temperature_unit: str,
     ) -> None:
         """Initialize Honeywell Lyric climate entity."""
-        self._temperature_unit = temperature_unit
+        self._attr_temperature_unit = temperature_unit
 
         # Setup supported hvac modes
-        self._hvac_modes = [HVAC_MODE_OFF]
+        self._attr_hvac_modes = [HVAC_MODE_OFF]
 
         # Add supported lyric thermostat features
         if LYRIC_HVAC_MODE_HEAT in device.allowedModes:
-            self._hvac_modes.append(HVAC_MODE_HEAT)
+            self._attr_hvac_modes.append(HVAC_MODE_HEAT)
 
         if LYRIC_HVAC_MODE_COOL in device.allowedModes:
-            self._hvac_modes.append(HVAC_MODE_COOL)
+            self._attr_hvac_modes.append(HVAC_MODE_COOL)
 
         if (
             LYRIC_HVAC_MODE_HEAT in device.allowedModes
             and LYRIC_HVAC_MODE_COOL in device.allowedModes
         ):
-            self._hvac_modes.append(HVAC_MODE_HEAT_COOL)
+            self._attr_hvac_modes.append(HVAC_MODE_HEAT_COOL)
 
         super().__init__(
             coordinator,
@@ -151,16 +160,6 @@ class LyricClimate(LyricDeviceEntity, ClimateEntity):
             device.name,
             None,
         )
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return SUPPORT_FLAGS
-
-    @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
-        return self._temperature_unit
 
     @property
     def current_temperature(self) -> float | None:
@@ -179,11 +178,6 @@ class LyricClimate(LyricDeviceEntity, ClimateEntity):
     def hvac_mode(self) -> str:
         """Return the hvac mode."""
         return HVAC_MODES[self.device.changeableValues.mode]
-
-    @property
-    def hvac_modes(self) -> list[str]:
-        """List of available hvac modes."""
-        return self._hvac_modes
 
     @property
     def target_temperature(self) -> float | None:
@@ -213,17 +207,6 @@ class LyricClimate(LyricDeviceEntity, ClimateEntity):
     def preset_mode(self) -> str | None:
         """Return current preset mode."""
         return self.device.changeableValues.thermostatSetpointStatus
-
-    @property
-    def preset_modes(self) -> list[str] | None:
-        """Return preset modes."""
-        return [
-            PRESET_NO_HOLD,
-            PRESET_HOLD_UNTIL,
-            PRESET_PERMANENT_HOLD,
-            PRESET_TEMPORARY_HOLD,
-            PRESET_VACATION_HOLD,
-        ]
 
     @property
     def min_temp(self) -> float:
