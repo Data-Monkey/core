@@ -80,49 +80,40 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class LyftSensor(SensorEntity):
     """Implementation of an Lyft sensor."""
 
+    _attr_icon = ICON
+
     def __init__(self, sensorType, products, product_id, product):
         """Initialize the Lyft sensor."""
         self.data = products
         self._product_id = product_id
-        self._product = product
         self._sensortype = sensorType
-        self._name = f"{self._product['display_name']} {self._sensortype}"
-        if "lyft" not in self._name.lower():
-            self._name = f"Lyft{self._name}"
-        if self._sensortype == "time":
-            self._unit_of_measurement = TIME_MINUTES
-        elif self._sensortype == "price":
-            estimate = self._product["estimate"]
+        self._attr_name = f"{product['display_name']} {sensorType}"
+        if "lyft" not in self.name.lower():
+            self._attr_name = f"Lyft{self.name}"
+        if sensorType == "time":
+            self._attr_unit_of_measurement = TIME_MINUTES
+        elif sensorType == "price":
+            estimate = product["estimate"]
             if estimate is not None:
-                self._unit_of_measurement = estimate.get("currency")
-        self._state = None
+                self._attr_unit_of_measurement = estimate.get("currency")
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+    def update(self):
+        """Get the latest data from the Lyft API and update the states."""
+        self.data.update()
+        try:
+            product = self.data.products[self._product_id]
+        except KeyError:
+            return
+        self._attr_state = None
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit_of_measurement
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
         params = {
-            "Product ID": self._product["ride_type"],
-            "Product display name": self._product["display_name"],
-            "Vehicle Capacity": self._product["seats"],
+            "Product ID": product["ride_type"],
+            "Product display name": product["display_name"],
+            "Vehicle Capacity": product["seats"],
         }
 
-        if self._product.get("pricing_details") is not None:
-            pricing_details = self._product["pricing_details"]
+        if product.get("pricing_details") is not None:
+            pricing_details = product["pricing_details"]
             params["Base price"] = pricing_details.get("base_charge")
             params["Cancellation fee"] = pricing_details.get("cancel_penalty_amount")
             params["Minimum price"] = pricing_details.get("cost_minimum")
@@ -131,8 +122,8 @@ class LyftSensor(SensorEntity):
             params["Price currency code"] = pricing_details.get("currency")
             params["Service fee"] = pricing_details.get("trust_and_service")
 
-        if self._product.get("estimate") is not None:
-            estimate = self._product["estimate"]
+        if product.get("estimate") is not None:
+            estimate = product["estimate"]
             params["Trip distance (in miles)"] = estimate.get(
                 "estimated_distance_miles"
             )
@@ -145,39 +136,26 @@ class LyftSensor(SensorEntity):
             params["Trip duration (in seconds)"] = estimate.get(
                 "estimated_duration_seconds"
             )
-
             params["Prime Time percentage"] = estimate.get("primetime_percentage")
 
-        if self._product.get("eta") is not None:
-            eta = self._product["eta"]
+        if product.get("eta") is not None:
+            eta = product["eta"]
             params["Pickup time estimate (in seconds)"] = eta.get("eta_seconds")
 
-        return {k: v for k, v in params.items() if v is not None}
-
-    @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return ICON
-
-    def update(self):
-        """Get the latest data from the Lyft API and update the states."""
-        self.data.update()
-        try:
-            self._product = self.data.products[self._product_id]
-        except KeyError:
-            return
-        self._state = None
+        self._attr_extra_state_attributes = {
+            k: v for k, v in params.items() if v is not None
+        }
         if self._sensortype == "time":
-            eta = self._product["eta"]
+            eta = product["eta"]
             if (eta is not None) and (eta.get("is_valid_estimate")):
                 time_estimate = eta.get("eta_seconds")
                 if time_estimate is None:
                     return
-                self._state = int(time_estimate / 60)
+                self._attr_state = int(time_estimate / 60)
         elif self._sensortype == "price":
-            estimate = self._product["estimate"]
+            estimate = product["estimate"]
             if (estimate is not None) and estimate.get("is_valid_estimate"):
-                self._state = (
+                self._attr_state = (
                     int(
                         (
                             estimate.get("estimated_cost_cents_min", 0)
