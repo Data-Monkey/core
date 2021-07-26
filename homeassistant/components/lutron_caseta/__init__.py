@@ -292,6 +292,8 @@ async def async_unload_entry(hass, config_entry):
 class LutronCasetaDevice(Entity):
     """Common base class for all Lutron Caseta devices."""
 
+    _attr_should_poll = False
+
     def __init__(self, device, bridge, bridge_device):
         """Set up the base class.
 
@@ -302,6 +304,16 @@ class LutronCasetaDevice(Entity):
         self._device = device
         self._smartbridge = bridge
         self._bridge_device = bridge_device
+        self._attr_name = device["name"]
+        self._attr_unique_id = str(self._device["serial"])
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self.unique_id)},
+            "name": self.name,
+            "suggested_area": device["name"].split("_")[0],
+            "manufacturer": MANUFACTURER,
+            "model": f"{device['model']} ({device['type']})",
+            "via_device": (DOMAIN, bridge_device["serial"]),
+        }
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -313,38 +325,6 @@ class LutronCasetaDevice(Entity):
         return self._device["device_id"]
 
     @property
-    def name(self):
-        """Return the name of the device."""
-        return self._device["name"]
-
-    @property
-    def serial(self):
-        """Return the serial number of the device."""
-        return self._device["serial"]
-
-    @property
-    def unique_id(self):
-        """Return the unique ID of the device (serial)."""
-        return str(self.serial)
-
-    @property
-    def device_info(self):
-        """Return the device info."""
-        return {
-            "identifiers": {(DOMAIN, self.serial)},
-            "name": self.name,
-            "suggested_area": self._device["name"].split("_")[0],
-            "manufacturer": MANUFACTURER,
-            "model": f"{self._device['model']} ({self._device['type']})",
-            "via_device": (DOMAIN, self._bridge_device["serial"]),
-        }
-
-    @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {"device_id": self.device_id, "zone_id": self._device["zone"]}
-
-    @property
-    def should_poll(self):
-        """No polling needed."""
-        return False

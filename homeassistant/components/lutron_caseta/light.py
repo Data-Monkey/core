@@ -49,15 +49,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LutronCasetaLight(LutronCasetaDevice, LightEntity):
     """Representation of a Lutron Light, including dimmable."""
 
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
-
-    @property
-    def brightness(self):
-        """Return the brightness of the light."""
-        return to_hass_level(self._device["current_state"])
+    _attr_supported_features = SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
 
     async def _set_brightness(self, brightness, **kwargs):
         args = {}
@@ -78,12 +70,9 @@ class LutronCasetaLight(LutronCasetaDevice, LightEntity):
         """Turn the light off."""
         await self._set_brightness(0, **kwargs)
 
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self._device["current_state"] > 0
-
     async def async_update(self):
         """Call when forcing a refresh of the device."""
-        self._device = self._smartbridge.get_device_by_id(self.device_id)
-        _LOGGER.debug(self._device)
+        device = self._smartbridge.get_device_by_id(self.device_id)
+        self._attr_is_on = device["current_state"] > 0
+        self._attr_brightness = to_hass_level(device["current_state"])
+        _LOGGER.debug(device)

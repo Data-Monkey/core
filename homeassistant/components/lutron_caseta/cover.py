@@ -40,25 +40,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LutronCasetaCover(LutronCasetaDevice, CoverEntity):
     """Representation of a Lutron shade."""
 
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP | SUPPORT_SET_POSITION
-
-    @property
-    def is_closed(self):
-        """Return if the cover is closed."""
-        return self._device["current_state"] < 1
-
-    @property
-    def current_cover_position(self):
-        """Return the current position of cover."""
-        return self._device["current_state"]
-
-    @property
-    def device_class(self):
-        """Return the device class."""
-        return DEVICE_CLASS_SHADE
+    _attr_device_class = DEVICE_CLASS_SHADE
+    _attr_supported_features = (
+        SUPPORT_OPEN | SUPPORT_CLOSE | SUPPORT_STOP | SUPPORT_SET_POSITION
+    )
 
     async def async_stop_cover(self, **kwargs):
         """Top the cover."""
@@ -84,5 +69,7 @@ class LutronCasetaCover(LutronCasetaDevice, CoverEntity):
 
     async def async_update(self):
         """Call when forcing a refresh of the device."""
-        self._device = self._smartbridge.get_device_by_id(self.device_id)
-        _LOGGER.debug(self._device)
+        device = self._smartbridge.get_device_by_id(self.device_id)
+        self._attr_is_closed = device["current_state"] < 1
+        self._attr_current_cover_position = device["current_state"]
+        _LOGGER.debug(device)

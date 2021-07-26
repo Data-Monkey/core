@@ -42,26 +42,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LutronCasetaFan(LutronCasetaDevice, FanEntity):
     """Representation of a Lutron Caseta fan. Including Fan Speed."""
 
-    @property
-    def percentage(self) -> int | None:
-        """Return the current speed percentage."""
-        if self._device["fan_speed"] is None:
-            return None
-        if self._device["fan_speed"] == FAN_OFF:
-            return 0
-        return ordered_list_item_to_percentage(
-            ORDERED_NAMED_FAN_SPEEDS, self._device["fan_speed"]
-        )
+    _attr_supported_features = SUPPORT_SET_SPEED
 
     @property
     def speed_count(self) -> int:
         """Return the number of speeds the fan supports."""
         return len(ORDERED_NAMED_FAN_SPEEDS)
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features. Speed Only."""
-        return SUPPORT_SET_SPEED
 
     async def async_turn_on(
         self,
@@ -91,12 +77,16 @@ class LutronCasetaFan(LutronCasetaDevice, FanEntity):
 
         await self._smartbridge.set_fan(self.device_id, named_speed)
 
-    @property
-    def is_on(self):
-        """Return true if device is on."""
-        return self.percentage and self.percentage > 0
-
     async def async_update(self):
         """Update when forcing a refresh of the device."""
-        self._device = self._smartbridge.get_device_by_id(self.device_id)
-        _LOGGER.debug("State of this lutron fan device is %s", self._device)
+        device = self._smartbridge.get_device_by_id(self.device_id)
+        if device["fan_speed"] is None:
+            percentage = None
+        elif device["fan_speed"] == FAN_OFF:
+            percentage = 0
+        else:
+            percentage = ordered_list_item_to_percentage(
+                ORDERED_NAMED_FAN_SPEEDS, device["fan_speed"]
+            )
+        self._attr_is_on = percentage and percentage > 0
+        _LOGGER.debug("State of this lutron fan device is %s", device)

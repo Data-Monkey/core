@@ -32,10 +32,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class LutronOccupancySensor(LutronCasetaDevice, BinarySensorEntity):
     """Representation of a Lutron occupancy group."""
 
-    @property
-    def device_class(self):
-        """Flag supported features."""
-        return DEVICE_CLASS_OCCUPANCY
+    _attr_device_class = DEVICE_CLASS_OCCUPANCY
 
     @property
     def is_on(self):
@@ -57,16 +54,6 @@ class LutronOccupancySensor(LutronCasetaDevice, BinarySensorEntity):
     def unique_id(self):
         """Return a unique identifier."""
         return f"occupancygroup_{self.device_id}"
-
-    @property
-    def device_info(self):
-        """Return the device info.
-
-        Sensor entities are aggregated from one or more physical
-        sensors by each room. Therefore, there shouldn't be devices
-        related to any sensor entities.
-        """
-        return None
 
     @property
     def extra_state_attributes(self):
