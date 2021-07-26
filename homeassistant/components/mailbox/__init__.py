@@ -106,7 +106,8 @@ class MailboxEntity(Entity):
     def __init__(self, mailbox):
         """Initialize mailbox entity."""
         self.mailbox = mailbox
-        self.message_count = 0
+        self._attr_state = "0"
+        self._attr_name = mailbox.name
 
     async def async_added_to_hass(self):
         """Complete entity initialization."""
@@ -118,20 +119,10 @@ class MailboxEntity(Entity):
         self.hass.bus.async_listen(EVENT, _mailbox_updated)
         self.async_schedule_update_ha_state(True)
 
-    @property
-    def state(self):
-        """Return the state of the binary sensor."""
-        return str(self.message_count)
-
-    @property
-    def name(self):
-        """Return the name of the entity."""
-        return self.mailbox.name
-
     async def async_update(self):
         """Retrieve messages from platform."""
         messages = await self.mailbox.async_get_messages()
-        self.message_count = len(messages)
+        self._attr_state = str(len(messages))
 
 
 class Mailbox:
