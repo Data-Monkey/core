@@ -175,6 +175,15 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
     A trigger_time of zero disables the alarm_trigger service.
     """
 
+    _attr_should_poll = False
+    _attr_supported_features = (
+        SUPPORT_ALARM_ARM_HOME
+        | SUPPORT_ALARM_ARM_AWAY
+        | SUPPORT_ALARM_ARM_NIGHT
+        | SUPPORT_ALARM_TRIGGER
+        | SUPPORT_ALARM_ARM_CUSTOM_BYPASS
+    )
+
     def __init__(
         self,
         hass,
@@ -188,13 +197,13 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
         """Init the manual alarm panel."""
         self._state = STATE_ALARM_DISARMED
         self._hass = hass
-        self._name = name
+        self._attr_name = name
         if code_template:
             self._code = code_template
             self._code.hass = hass
         else:
             self._code = code or None
-        self._code_arm_required = code_arm_required
+        self._attr_code_arm_required = code_arm_required
         self._disarm_after_trigger = disarm_after_trigger
         self._previous_state = self._state
         self._state_ts = None
@@ -210,16 +219,6 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
         self._arming_time_by_state = {
             state: config[state][CONF_ARMING_TIME] for state in SUPPORTED_ARMING_STATES
         }
-
-    @property
-    def should_poll(self):
-        """Return the polling state."""
-        return False
-
-    @property
-    def name(self):
-        """Return the name of the device."""
-        return self._name
 
     @property
     def state(self):
@@ -242,17 +241,6 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
             return STATE_ALARM_ARMING
 
         return self._state
-
-    @property
-    def supported_features(self) -> int:
-        """Return the list of supported features."""
-        return (
-            SUPPORT_ALARM_ARM_HOME
-            | SUPPORT_ALARM_ARM_AWAY
-            | SUPPORT_ALARM_ARM_NIGHT
-            | SUPPORT_ALARM_TRIGGER
-            | SUPPORT_ALARM_ARM_CUSTOM_BYPASS
-        )
 
     @property
     def _active_state(self):
@@ -286,11 +274,6 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
             return alarm.FORMAT_NUMBER
         return alarm.FORMAT_TEXT
 
-    @property
-    def code_arm_required(self):
-        """Whether the code is required for arm actions."""
-        return self._code_arm_required
-
     def alarm_disarm(self, code=None):
         """Send disarm command."""
         if not self._validate_code(code, STATE_ALARM_DISARMED):
@@ -302,7 +285,7 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
 
     def alarm_arm_home(self, code=None):
         """Send arm home command."""
-        if self._code_arm_required and not self._validate_code(
+        if self.code_arm_required and not self._validate_code(
             code, STATE_ALARM_ARMED_HOME
         ):
             return
@@ -311,7 +294,7 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
 
     def alarm_arm_away(self, code=None):
         """Send arm away command."""
-        if self._code_arm_required and not self._validate_code(
+        if self.code_arm_required and not self._validate_code(
             code, STATE_ALARM_ARMED_AWAY
         ):
             return
@@ -320,7 +303,7 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
 
     def alarm_arm_night(self, code=None):
         """Send arm night command."""
-        if self._code_arm_required and not self._validate_code(
+        if self.code_arm_required and not self._validate_code(
             code, STATE_ALARM_ARMED_NIGHT
         ):
             return
@@ -329,7 +312,7 @@ class ManualAlarm(alarm.AlarmControlPanelEntity, RestoreEntity):
 
     def alarm_arm_custom_bypass(self, code=None):
         """Send arm custom bypass command."""
-        if self._code_arm_required and not self._validate_code(
+        if self.code_arm_required and not self._validate_code(
             code, STATE_ALARM_ARMED_CUSTOM_BYPASS
         ):
             return
