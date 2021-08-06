@@ -13,6 +13,8 @@ from homeassistant.const import (
     CONF_CURRENCY,
     CONF_MONITORED_VARIABLES,
     CONF_TYPE,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_POWER,
     ENERGY_KILO_WATT_HOUR,
     POWER_WATT,
 )
@@ -37,11 +39,26 @@ DEFAULT_PERIOD = "year"
 DEFAULT_UTC_OFFSET = "0"
 
 SENSOR_TYPES = {
-    CONF_INSTANT: ["Energy Usage", POWER_WATT],
-    CONF_AMOUNT: ["Energy Consumed", ENERGY_KILO_WATT_HOUR],
-    CONF_BUDGET: ["Energy Budget", None],
-    CONF_COST: ["Energy Cost", None],
-    CONF_CURRENT_VALUES: ["Per-Device Usage", POWER_WATT],
+    CONF_INSTANT: [
+        "Realtime Power",
+        POWER_WATT,
+        DEVICE_CLASS_POWER,
+        STATE_CLASS_MEASUREMENT,
+    ],
+    CONF_AMOUNT: [
+        "Energy Consumed",
+        ENERGY_KILO_WATT_HOUR,
+        DEVICE_CLASS_ENERGY,
+        STATE_CLASS_MEASUREMENT,
+    ],
+    CONF_BUDGET: ["Energy Budget", None, None, None],
+    CONF_COST: ["Energy Cost", None, None, None],
+    CONF_CURRENT_VALUES: [
+        "Per-Device Usage",
+        POWER_WATT,
+        DEVICE_CLASS_POWER,
+        STATE_CLASS_MEASUREMENT,
+    ],
 }
 
 TYPES_SCHEMA = vol.In(SENSOR_TYPES)
@@ -101,8 +118,6 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class EfergySensor(SensorEntity):
     """Implementation of an Efergy sensor."""
 
-    _attr_state_class = STATE_CLASS_MEASUREMENT
-
     def __init__(self, sensor_type, app_token, utc_offset, period, currency, sid=None):
         """Initialize the sensor."""
         self.sid = sid
@@ -118,7 +133,9 @@ class EfergySensor(SensorEntity):
             self._attr_unit_of_measurement = f"{currency}/{period}"
         else:
             self._attr_unit_of_measurement = SENSOR_TYPES[sensor_type][1]
-        self.last_duration = None
+        self._attr_device_class = SENSOR_TYPES[sensor_type][2]
+        self._attr_state_class = SENSOR_TYPES[sensor_type][3]
+        self.last_duration = 0
 
     def update(self):
         """Get the Efergy monitor data from the web service."""
@@ -131,7 +148,7 @@ class EfergySensor(SensorEntity):
                 url_string = f"{_RESOURCE}getEnergy?token={self.app_token}&offset={self.utc_offset}&period={self.period}"
                 response = requests.get(url_string, timeout=10)
                 self._attr_state = response.json()["sum"]
-                if response.json()["duration"] < self.last_duration:
+                if int(response.json()["duration"]) < self.last_duration:
                     self._attr_last_reset = dt.utc_from_timestamp(0)
                 self.last_duration = response.json()["duration"]
             elif self.type == "budget":
