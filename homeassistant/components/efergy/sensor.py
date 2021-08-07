@@ -1,4 +1,5 @@
 """Support for Efergy sensors."""
+from datetime import datetime, timedelta
 import logging
 
 import requests
@@ -19,7 +20,6 @@ from homeassistant.const import (
     POWER_WATT,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.util import dt
 
 _LOGGER = logging.getLogger(__name__)
 _RESOURCE = "https://engage.efergy.com/mobile_proxy/"
@@ -135,7 +135,6 @@ class EfergySensor(SensorEntity):
             self._attr_unit_of_measurement = SENSOR_TYPES[sensor_type][1]
         self._attr_device_class = SENSOR_TYPES[sensor_type][2]
         self._attr_state_class = SENSOR_TYPES[sensor_type][3]
-        self.last_duration = 0
 
     def update(self):
         """Get the Efergy monitor data from the web service."""
@@ -148,9 +147,10 @@ class EfergySensor(SensorEntity):
                 url_string = f"{_RESOURCE}getEnergy?token={self.app_token}&offset={self.utc_offset}&period={self.period}"
                 response = requests.get(url_string, timeout=10)
                 self._attr_state = response.json()["sum"]
-                if int(response.json()["duration"]) < self.last_duration:
-                    self._attr_last_reset = dt.utc_from_timestamp(0)
-                self.last_duration = response.json()["duration"]
+                self._attr_last_reset = round(
+                    datetime.now() - timedelta(seconds=int(response.json()["duration"]))
+                )
+
             elif self.type == "budget":
                 url_string = f"{_RESOURCE}getBudget?token={self.app_token}"
                 response = requests.get(url_string, timeout=10)
